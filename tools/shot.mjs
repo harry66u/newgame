@@ -18,6 +18,8 @@
    --every <k>         also save a screenshot every k rendered frames (a motion strip)
    --eval <js>         run this in the page just before the final screenshot; its result is printed
    --stats             print frame cost (CPU ms per frame) and what was drawn
+   --debug             overlay what the simulation collides with: obstacle hit boxes (red), boost strips (green),
+                       the lines where leaving the piste ends the run, and the skier's own collision size (yellow)
 
    Prints console errors from the page; exits 1 if there were any. */
 import { createRequire } from 'node:module';
@@ -49,6 +51,7 @@ page.on('console', (m) => { if (m.type() === 'error') errs.push(m.text()); });
 page.on('pageerror', (e) => errs.push('pageerror: ' + e.message));
 await page.goto('file://' + path.join(root, 'index.html') + '?' + q);
 await page.addScriptTag({ path: path.join(root, 'tests', 'bot.js') });
+if (opt.debug) await page.addScriptTag({ path: path.join(root, 'tools', 'debug-layer.js') });
 await page.waitForFunction(() => window.FL && FL.game, null, { timeout: 15000 }).catch(() => {});
 if (!(await page.evaluate(() => !!(window.FL && FL.game)))) {
   await page.screenshot({ path: opt.out });

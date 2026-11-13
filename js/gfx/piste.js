@@ -58,12 +58,15 @@ float wallShadow(float off, float hw, float s, float side, vec2 sd){
   float len = dl / -lx;                                   // how far along the ground the sun ray has come
   float sc = s - len * sd.y;                              // where along the tree line that ray started
   float cell = floor(sc / W_SP), fc = fract(sc / W_SP) - 0.5;
-  float h = mix(W_HMIN, W_HMAX, flHash(vec2(cell, side * 7.0 + 3.0)));
-  float full = h * uShadow.z, t = len / full;
+  float rnd = flHash(vec2(cell, side * 7.0 + 3.0));
+  float h = mix(W_HMIN, W_HMAX, rnd);
+  // Art over physics: with the sun square-on, true shadows would stripe the whole piste.
+  // Keep the fringe to the sunward third so the run stays bright and easy to read.
+  float full = min(h * uShadow.z, (3.2 + 3.0 * rnd) / -lx), t = len / full;
   float wid = W_R * (1.0 - t) * (0.78 + 0.36 * fract(t * 3.0 + 0.2));
   float soft = 0.08 + 0.8 * t * t;
   float teeth = (1.0 - smoothstep(-soft * 0.5, soft, abs(fc) * W_SP * -lx - wid)) * step(t, 1.0);
-  float mass = 1.0 - smoothstep(0.22, 0.46, len / (W_HMIN * uShadow.z));
+  float mass = 1.0 - smoothstep(0.9, 2.4, dl);
   return max(teeth, mass);
 }
 float skierShadow(vec2 q){
@@ -122,16 +125,20 @@ void main(){
     float band = smoothstep(0.46, 0.54, vA.w) * (1.0 - smoothstep(0.80, 0.88, vA.w)) * onP;
     col = mix(col, flLight(vec3(0.05, 0.27, 0.74), n, lit), band * 0.78);
   } else {
-    // rock, with snow clinging to its top and ledges, sinking into the valley haze
-    float depth = vA.x * vA.y, s = vA.z;
-    float st = flNoise(vec2(s * 0.07, depth * 0.5));
-    float ph = fract(depth * 0.19 + st * 0.9);
-    float grit = flNoise(vec2(s * 0.6, depth * 0.9));
-    vec3 rock = mix(vec3(0.07, 0.095, 0.14), vec3(0.15, 0.19, 0.26), smoothstep(0.3, 0.7, ph)) * (0.75 + 0.5 * grit);
-    float line = 0.25 + 1.3 * flNoise(vec2(s * 0.5, 2.0)) + 0.6 * flNoise(vec2(s * 2.3, 5.0));
-    float snow = 1.0 - smoothstep(line * 0.5, line, depth);
-    snow = max(snow, smoothstep(0.90, 0.94, ph) * exp(-depth / 28.0) * 0.85);
-    col = flLight(mix(rock, vec3(0.95, 0.96, 0.98), snow), n, 1.0);
+    // rock: flat facets like the crags around it, snow lying on the ones that tip upward, a
+    // ragged cap of snow under the lip, and all of it sinking into the valley haze
+    float depth = vA.x * vA.y;
+    vec3 along = normalize(vec3(n.z, 0.0, -n.x));           // horizontal direction across the face
+    float a = dot(vW.xz + uCamW.xz, along.xz);              // world-anchored, so the pattern stays put
+    vec2 p = vec2(a * 0.36 + depth * 0.09, depth * 0.3);
+    vec2 cell = floor(p), f = fract(p);
+    float tri = step(1.0, f.x + f.y);                       // each cell is two triangular facets
+    float h1 = flHash(cell + tri * 17.3), h2 = flHash(cell * 1.7 + tri * 5.1 + 3.0);
+    vec3 fn = normalize(n + along * (h1 - 0.5) * 1.1 + vec3(0.0, 1.0, 0.0) * (h2 - 0.5) * 1.1);
+    vec3 rock = mix(vec3(0.060, 0.082, 0.125), vec3(0.125, 0.16, 0.225), h2);
+    float lipLine = 0.35 + 1.5 * flNoise(vec2(a * 0.55, 1.0)) + 0.5 * flNoise(vec2(a * 2.4, 7.0));
+    float snow = max(1.0 - smoothstep(lipLine * 0.6, lipLine, depth), smoothstep(0.50, 0.58, fn.y) * exp(-depth / 30.0) * 0.9);
+    col = flLight(mix(rock, vec3(0.95, 0.96, 0.98), snow), fn, 1.0);
     col = mix(col, uValley.rgb, 1.0 - exp(-depth / 40.0));
   }
   o = vec4(flFog(col, vW), 1.0);

@@ -200,7 +200,7 @@ void main(){
       };
       this.emptyVao = gl.createVertexArray();
       this.targets = null;
-      for (const L of layers) { L.dead = false; this._call(L, 'init'); }
+      for (const L of layers) L.dead = false;         // each layer's init runs lazily, see _ready
       this.dirtySize = false;
       this.resize(true);
     }
@@ -362,6 +362,8 @@ void main(){
       if (L.dead) return false;
       if (this.only && this.only.indexOf(L.name) < 0) return false;
       if (L.standIn && this.has(L.standIn)) return false;
+      // init on first use, and again after the GL context has been recreated
+      if (L._gen !== this.gen) { L._gen = this.gen; this._call(L, 'init'); if (L.dead) return false; }
       return true;
     }
 

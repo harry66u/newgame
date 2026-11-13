@@ -239,6 +239,7 @@ node tools/shot.mjs --out a.png --until slalom --frames 40    # inside a slalom 
 node tools/shot.mjs --out a.png --ff 20 --steer L40,R40 --frames 80 --every 20   # a motion strip while carving
 node tools/shot.mjs --out a.png --only piste,flora            # just these layers
 node tools/shot.mjs --out a.png --size 390x844 --touch --dpr 2   # a phone
+node tools/shot.mjs --out a.png --until field --debug          # overlay the real hit boxes and kill lines
 node tools/shot.mjs --help-ish: see the comment at the top of the file for every option
 ```
 
