@@ -64,7 +64,7 @@ void main(){
   vec3 n = flFacet(vW);
   if (dot(n, vW) > 0.0) n = -n;
   // snow lies on what tips upward and drifts against the foot
-  float snow = max(smoothstep(0.48, 0.62, n.y), 1.0 - smoothstep(0.02, 0.22, vH + (vTone - 0.5) * 0.12));
+  float snow = max(smoothstep(0.42, 0.56, n.y), 1.0 - smoothstep(0.16, 0.2, vH + (vTone - 0.5) * 0.3));
   vec3 alb = mix(mix(uRockDark, uRock, vTone), ${SNOW}, snow);
   o = vec4(flFog(flLight(alb, n, 1.0), vW), 1.0);
 }`;
@@ -169,7 +169,7 @@ void main(){
     gl += tw * tw * (exp(-d2 * 3.0) + 0.5 * exp(-abs(dv.x * dv.y) * 14.0 - d2 * 0.35));
   }
   col += (uAmb.rgb + uSunCol.rgb) * (gl * 2.4 * live * exp(-dist * 0.004));
-  col += vec3(0.5, 0.85, 1.0) * (dull * live * 5.0);                  // the flash as it is ridden
+  col += vec3(0.3, 0.8, 1.0) * (dull * live * 1.8);                  // the flash as it is ridden
   o = vec4(col, 1.0);
 }`;
 
@@ -295,7 +295,7 @@ void main(){
   function pad(tr, pd, w, cam, dt) {
     const a = pd.propsLine || (pd.propsLine = outline(tr, pd, w));
     let dull = pd.propsDull || 0;
-    if (pd.used && dull < 1) pd.propsDull = dull = Math.min(1, dull + dt * 3.2);
+    if (pd.used && dull < 1) pd.propsDull = dull = Math.min(1, dull + dt * 5);
     const bx = w[0] - cam.x, by = w[1] - cam.y, bz = w[2] - cam.z, seed = hash(pd.s, pd.o);
     for (let r = 0; r < ROWS - 1; r++) {
       const v0 = (r - (ROWS - 1) / 2) * (pd.hz / 3), v1 = v0 + pd.hz / 3, c = r * 2;
