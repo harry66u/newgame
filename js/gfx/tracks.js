@@ -41,7 +41,7 @@ void main(){
   float groove = 1.0 - smoothstep(0.02, 0.05 + fwidth(x), x); // the thin line an edge leaves
   float e = 1.0 - vK.x * vK.x;
   float smear = e * e * vK.z;                                 // the wider scrape of a hard carve
-  float a = (groove * 0.44 + smear * 0.30) * vK.y;
+  float a = (groove * 0.46 + smear * 0.20) * vK.y;
   // Multiplied over the snow: a groove is snow turned away from the sun, so it takes the
   // colour of the shade in whatever mood the light is in.
   vec3 shade = uAmb.rgb / max(uAmb.rgb + uSunCol.rgb, vec3(1e-3));
@@ -165,8 +165,8 @@ void main(){
   Gfx.layer({ name: 'tracks', order: 12, init: tInit, prepare: tPrepare, drawBlend: tDraw, reset: clear });
 
   // =================================================================== crystals in the air
-  const CRYSTALS = 320;
-  const SHUTTER = 0.011;        // seconds of travel a streak covers
+  const CRYSTALS = 448;
+  const SHUTTER = 0.015;        // seconds of travel a streak covers
 
   /* The box is 64 x 16 x 64 m (512 m, the wrap of uCamW, is a whole number of each) and rides
      ahead of the camera. Crystals fade toward its faces, so wrapping is never seen. */
@@ -203,15 +203,15 @@ void main(){
   float sl = length(sd);
   vec3 up = sl > 0.02 ? (ax - view * dot(view, ax)) / sl : uCamU.xyz;
   sd = sl > 0.02 ? sd / sl : uCamR.xyz;
-  float r0 = mix(0.008, 0.02, k);
+  float r0 = mix(0.012, 0.028, k);
   float r = max(r0, dist * uView.w * 1.6 / uView.y);          // never thinner than most of a pixel: dimmer instead
   vec3 pos = p + ax * (q.y * len * 0.5) + up * (q.y * r) + sd * (q.x * r);
 
   float sun = pow(max(dot(view, uSun.xyz), 0.0), 3.0);         // the ones toward the sun flash brightest
   float tw = 0.65 + 0.35 * sin(uTime * (1.5 + 3.0 * h.x) + k * 50.0);
-  float glint = step(0.88, rare) * (1.2 + 1.8 * sun);          // only a few are bright enough to bloom
-  float i = (0.10 + 0.20 * k + glint) * (0.45 + 0.55 * sp + 0.5 * bo) * tw;
-  vK = vec3(q, i * fade * (r0 / r) * uMove.w);
+  float glint = step(0.85, rare) * (1.8 + 2.4 * sun);          // only a few are bright enough to bloom
+  float i = (0.50 + 0.60 * k + glint) * (0.55 + 0.7 * sp + 0.5 * bo) * tw;
+  vK = vec3(q, i * fade * sqrt(r0 / r) * uMove.w);
   gl_Position = uVP * vec4(pos, 1.0);
 }`;
   const DFS = `
@@ -235,7 +235,7 @@ void main(){
       vx += (dx * s - vx) * k; vy += (dy * s - vy) * k; vz += (dz * s - vz) * k;
     } else if (!cHave || d >= WARP) { vx = vy = vz = 0; }
     cHave = true; cx = cam.x; cy = cam.y; cz = cam.z;
-    amount = (v.mode === 'title' ? 0.5 : 1) * (v.calm ? 0.7 : 1);
+    amount = (v.mode === 'title' ? 0.7 : 1) * (v.calm ? 0.7 : 1);
   }
 
   function dDraw(R) {

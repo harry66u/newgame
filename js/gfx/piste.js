@@ -117,7 +117,7 @@ void main(){
     col += uSunCol.rgb * pow(rs, 20.0) * 0.45 * lit;
     float dist = length(vW);
     vec2 gp = (vW.xz + uCamW.xz) * 9.0;
-    float g = flHash(floor(gp));
+    float g = flHash(mod(floor(gp), 4608.0));               // periodic with uCamW's 512 m wrap, so glints stay put across it
     float gd = length(fract(gp) - (vec2(g, fract(g * 57.3)) * 0.6 + 0.2));
     col += uSunCol.rgb * step(0.93, g) * smoothstep(0.15, 0.02, gd) * (0.3 + pow(rs, 2.0)) * exp(-dist / 18.0) * lit * 4.0;
 
@@ -129,7 +129,7 @@ void main(){
     // ragged cap of snow under the lip, and all of it sinking into the valley haze
     float depth = vA.x * vA.y;
     vec3 along = normalize(vec3(n.z, 0.0, -n.x));           // horizontal direction across the face
-    float a = dot(vW.xz + uCamW.xz, along.xz);              // world-anchored, so the pattern stays put
+    float a = vA.z;                                         // distance along the face, carried by the mesh: stays put for good
     vec2 p = vec2(a * 0.36 + depth * 0.09, depth * 0.3);
     vec2 cell = floor(p), f = fract(p);
     float tri = step(1.0, f.x + f.y);                       // each cell is two triangular facets
@@ -209,10 +209,11 @@ void main(){
       // where the snow simply stops (a gap), close the end with a wall of rock
       const cap = (E, dir) => {
         const base = vi / 14, nx = E.sn * dir, nz = -E.cs * dir;
+        const capW = Math.hypot(E.pSR[0] - E.pSL[0], E.pSR[2] - E.pSL[2]);     // facets keep their size across the end wall
         put(E.pSL[0], E.pSL[1], E.pSL[2], nx, 0.1, nz, 0, DEPTH, E.s, 0, 0, 0, 1, E.yaw);
-        put(E.pSR[0], E.pSR[1], E.pSR[2], nx, 0.1, nz, 0, DEPTH, E.s + 3.7, 0, 0, 0, 1, E.yaw);
+        put(E.pSR[0], E.pSR[1], E.pSR[2], nx, 0.1, nz, 0, DEPTH, E.s + capW, 0, 0, 0, 1, E.yaw);
         put(E.bL[0], E.bL[1], E.bL[2], nx, 0.1, nz, 1, DEPTH, E.s, 0, 0, 0, 1, E.yaw);
-        put(E.bR[0], E.bR[1], E.bR[2], nx, 0.1, nz, 1, DEPTH, E.s + 3.7, 0, 0, 0, 1, E.yaw);
+        put(E.bR[0], E.bR[1], E.bR[2], nx, 0.1, nz, 1, DEPTH, E.s + capW, 0, 0, 0, 1, E.yaw);
         idx[ii++] = base; idx[ii++] = base + 1; idx[ii++] = base + 2; idx[ii++] = base + 1; idx[ii++] = base + 3; idx[ii++] = base + 2;
       };
       if (capA) cap(ends[0], -1);

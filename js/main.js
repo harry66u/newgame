@@ -18,11 +18,19 @@
   audio.muted = store.get('fallline.muted', '0') === '1';
   Hud.init({ best, muted: audio.muted, touch: coarse });
 
+  /* Tool switches from the query string (q: lock a quality notch, only: draw just these layers,
+     seed: fix the track). When the game is embedded the query string belongs to the host page,
+     so anything that is not exactly what the tools send is ignored. */
+  const qRaw = qs.get('q'), qNum = qRaw === null || qRaw === '' ? NaN : +qRaw;
+  const qOK = Number.isInteger(qNum) && qNum >= 0 && qNum <= 5;
+  const onlyQ = /^[a-z-]+(,[a-z-]+)*$/.test(qs.get('only') || '') ? qs.get('only') : '';
+  const seedQ = qs.get('seed'), seedOK = !!seedQ && Number.isFinite(+seedQ);
+
   let R;
   try {
     R = new FL.Gfx.Renderer(canvas, {
-      mobile: coarse, notch: qs.has('q') ? +qs.get('q') : undefined, lockQuality: qs.has('q'), preserve: qs.has('shot'),
-      only: qs.has('only') ? qs.get('only').split(',') : null,
+      mobile: coarse, notch: qOK ? qNum : undefined, lockQuality: qOK, preserve: qs.has('shot'),
+      only: onlyQ ? onlyQ.split(',') : null,
     });
   } catch (err) {
     Hud.fail();
@@ -30,7 +38,7 @@
     return;
   }
 
-  const newSeed = () => (qs.has('seed') ? +qs.get('seed') : (Math.random() * 4294967296) >>> 0);
+  const newSeed = () => (seedOK ? +seedQ : (Math.random() * 4294967296) >>> 0);
   let track = new Track(newSeed());
   const st = Sim.newState(), prev = Sim.newState(), cam = Sim.newCam(), camP = Sim.newCam();
   Sim.reset(st, track); Sim.copy(prev, st);
@@ -56,7 +64,7 @@
   // ------------------------------------------------------------------ run control
   const showMute = () => Hud.setMuted(audio.muted);
   const toggleMute = () => { audio.setMuted(!audio.muted); store.set('fallline.muted', audio.muted ? '1' : '0'); showMute(); };
-  Hud.onMute(() => { audio.init(); toggleMute(); });
+  Hud.onMute(() => { if (!paused) audio.init(); toggleMute(); });      // muting must not wake the sound under a pause
 
   function start() {
     Sim.launch(st);
@@ -126,8 +134,11 @@
     if (touches.length) input.dir = touches[touches.length - 1].side;       // newest finger wins
     else input.dir = input.left && input.right ? input.lastSide : input.left ? -1 : input.right ? 1 : 0;
   }
-  function key(side, down) {
-    if (side < 0) input.left = down; else input.right = down;
+  // Physical keys, so letting go of A does not drop a held left arrow.
+  const held = { ArrowLeft: false, KeyA: false, ArrowRight: false, KeyD: false };
+  function key(code, side, down) {
+    held[code] = down;
+    input.left = held.ArrowLeft || held.KeyA; input.right = held.ArrowRight || held.KeyD;
     if (down) input.lastSide = side;
     refreshDir();
   }
@@ -136,19 +147,19 @@
   window.addEventListener('keydown', (e) => {
     if (e.metaKey || e.ctrlKey || e.altKey) return;
     const side = SIDE[e.code];
-    if (side) { key(side, true); e.preventDefault(); }
+    if (side) { key(e.code, side, true); e.preventDefault(); }
     if ((e.code === 'Space' && !Hud.isMuteTarget(e.target)) || e.code === 'ArrowUp' || e.code === 'ArrowDown') e.preventDefault();
     if (e.repeat) return;
     Hud.setTouch(false);
-    if (e.code === 'KeyM') { audio.init(); toggleMute(); return; }
+    if (e.code === 'KeyM') { if (!paused) audio.init(); toggleMute(); return; }
     if (e.code === 'KeyP' || e.code === 'Escape') { if (mode === 'run') setPaused(!paused); return; }
     if (IGNORE[e.code] || /^F\d+$/.test(e.code)) return;
     // Space or Enter on the focused mute button is for the button, not a start/retry
     if (Hud.isMuteTarget(e.target) && (e.code === 'Space' || e.code === 'Enter')) return;
     press();
   });
-  window.addEventListener('keyup', (e) => { const side = SIDE[e.code]; if (side) key(side, false); });
-  window.addEventListener('blur', () => { input.left = input.right = false; touches.length = 0; refreshDir(); if (mode === 'run' && !hook.manual) setPaused(true); });
+  window.addEventListener('keyup', (e) => { const side = SIDE[e.code]; if (side) key(e.code, side, false); });
+  window.addEventListener('blur', () => { held.ArrowLeft = held.KeyA = held.ArrowRight = held.KeyD = false; input.left = input.right = false; touches.length = 0; refreshDir(); if (mode === 'run' && !hook.manual) setPaused(true); });
   document.addEventListener('visibilitychange', () => { if (document.hidden) { if (mode === 'run') setPaused(true); else audio.suspend(); } else if (!paused) audio.resume(); });
 
   const sideOf = (x) => (x < window.innerWidth / 2 ? -1 : 1);
@@ -157,6 +168,7 @@
     if (e.pointerType === 'mouse' && e.button !== 0) return;
     if (e.pointerType !== 'mouse') Hud.setTouch(true);
     e.preventDefault();
+    window.focus();            // preventDefault also cancels the focus change: without this an embedded frame never gets the keyboard
     if (press() && mode !== 'run') return;
     touches.push({ id: e.pointerId, side: sideOf(e.clientX) });
     refreshDir();
@@ -165,6 +177,7 @@
     for (const t of touches) if (t.id === e.pointerId) { t.side = sideOf(e.clientX); refreshDir(); }
   });
   const lift = (e) => {
+    if (!paused && !document.hidden) audio.init();        // a finger coming up is what browsers count as the gesture that unlocks sound
     for (let i = touches.length - 1; i >= 0; i--) if (touches[i].id === e.pointerId) touches.splice(i, 1);
     refreshDir();
   };
@@ -180,7 +193,7 @@
   window.addEventListener('orientationchange', dirty);
   if (window.ResizeObserver) new ResizeObserver(dirty).observe(canvas);
   canvas.addEventListener('webglcontextlost', (e) => { e.preventDefault(); setPaused(true); });
-  canvas.addEventListener('webglcontextrestored', () => { R.init(); });
+  canvas.addEventListener('webglcontextrestored', () => { R.init(); R.dirtySize = true; });      // and redraw, even while paused
 
   // ------------------------------------------------------------------ loop
   /* FL.game: a handle for tests and tools.

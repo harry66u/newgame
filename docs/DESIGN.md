@@ -255,3 +255,9 @@ bridge, split, jump, islands, drop, rest. Seeds 1–9 give different tracks.
 
 `node tests/run.js fair 4 15000` replays a perfect-play bot (must print `deaths 0/4`);
 `node tests/run.js human 16 15000` shows how far imperfect players get.
+
+`node --test tests/` runs the simulation tests (about 25 s, no dependencies): determinism,
+refresh-rate independence, fairness, generator invariants, the scoring rules, and steering
+feel as numbers. `node tests/e2e.mjs` drives the real page in headless Chromium (keys, touch,
+restart, best score, pause, mute, every layer alive). `node tools/build.mjs --check` builds the
+single-file game into `dist/` and loads both outputs to make sure they start.

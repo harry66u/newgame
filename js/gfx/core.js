@@ -123,6 +123,7 @@ void main(){
   if (uBlur > 0.002) {
     // speed: the frame smears outward from the centre (samples jittered so it reads as grain, not ghosts)
     vec2 dir = c * uBlur * r2 * 0.3;
+    dir *= min(1.0, 0.012 / max(length(dir), 1e-5));      // five taps can only fill so wide a smear: beyond this it turns to static
     float j = hash(gl_FragCoord.xy + fract(uTime) * 37.0);
     col = vec3(0.0);
     for (int i = 0; i < 5; i++) col += texture(uScene, vUV - dir * (float(i) + j)).rgb * (1.0 - float(i) * 0.14);
@@ -332,7 +333,10 @@ void main(){
     }
 
     /* Watch real frame pacing and step quality down when the device keeps missing its refresh.
-       It never steps back up: without GPU timers there is no way to know there is headroom. */
+       It does not step back up (without GPU timers there is no way to know there is headroom),
+       with one exception: if every notch was spent and the cadence never moved, the frame rate
+       is capped from outside (a 30 fps power-saving mode, a throttled frame), so the picture is
+       given back and left alone. */
     _pace(dtMs) {
       if (this.lockQuality) return;
       this.warm++;
@@ -342,11 +346,18 @@ void main(){
       if (fr.length < 90) return;
       const sorted = fr.slice().sort((a, b) => a - b);
       const fast = Math.min(sorted[9], 16.9);         // the cadence the display can actually reach
-      if (fast < this.refresh || this.refresh > 16.8) this.refresh = Math.max(fast, 4);
+      this.refresh = Math.max(fast, 8.3);             // re-learned every window; never chase more than 120 Hz
       let slow = 0;
       for (const d of fr) if (d > this.refresh * 1.45) slow++;
       fr.length = 0;
-      if (slow > 22 && this.notch < NOTCH.length - 1) { this.notch++; this.resize(); this.warm = 20; }
+      if (slow <= 22) return;
+      const med = sorted[45];
+      if (this.notch < NOTCH.length - 1) {
+        if (this.med0 === undefined) { this.med0 = med; this.notch0 = this.notch; }
+        this.notch++; this.resize(); this.warm = 20;
+      } else if (this.med0 !== undefined && med > this.med0 * 0.9) {
+        this.notch = this.notch0; this.lockQuality = true; this.resize();
+      }
     }
 
     // ------------------------------------------------------------ layers
