@@ -76,7 +76,7 @@
       this.master = G(this.muted ? 0 : MASTER);
       const comp = ctx.createDynamicsCompressor();
       comp.threshold.value = -17; comp.knee.value = 10; comp.ratio.value = 6; comp.attack.value = 0.003; comp.release.value = 0.2;
-      const pre = G(0.5 * 0.6), shaper = ctx.createWaveShaper(), N = 2049, curve = new Float32Array(N);
+      const pre = G(0.5 * 0.85), shaper = ctx.createWaveShaper(), N = 2049, curve = new Float32Array(N);
       for (let i = 0; i < N; i++) {
         const x = (i / (N - 1) * 2 - 1) * 2, ax = Math.abs(x);
         const y = ax < 0.5 ? ax : 0.5 + 0.45 * Math.tanh((ax - 0.5) / 0.45);
@@ -305,18 +305,18 @@
     boost(mult) {
       const ctx = this.ctx; if (!ctx || this.muted) return;
       const t = ctx.currentTime, n = clamp((mult | 0) - 1, 0, 4);
-      this._noise(this.white, 'highpass', 2600, 8500, 0.7, t, 0.4, 0.2, 0, 0.02, false);
-      this._tone('sine', 1500, 4400, t, 0.16, 0.07, 0, true, 0.004);
-      this._bell(this._note(n, 2), t + 0.02, 0.7, 0.2, -0.2);
-      this._bell(this._note(n + 2 > 4 ? 4 : n + 2, 2), t + 0.09, 0.8, 0.14, 0.2);
+      this._noise(this.white, 'highpass', 2600, 8500, 0.7, t, 0.4, 0.15, 0, 0.02, false);
+      this._tone('sine', 1500, 4400, t, 0.16, 0.05, 0, true, 0.004);
+      this._bell(this._note(n, 2), t + 0.02, 0.7, 0.15, -0.2);
+      this._bell(this._note(n + 2 > 4 ? 4 : n + 2, 2), t + 0.09, 0.8, 0.105, 0.2);
     }
 
     // close call: a quick whoosh past the ear and a soft chime, higher as the multiplier climbs
     near(mult, side) {
       const ctx = this.ctx; if (!ctx || this.muted) return;
       const t = ctx.currentTime, s = side < 0 ? -1 : side > 0 ? 1 : 0;
-      this._noise(this.white, 'bandpass', 900, 3600, 1.4, t, 0.17, 0.22, s * 0.6, 0.03, false);
-      this._bell(this._note(clamp((mult | 0) - 1, 0, 4), 2), t + 0.03, 0.6, 0.19, s * 0.4);
+      this._noise(this.white, 'bandpass', 900, 3600, 1.4, t, 0.17, 0.19, s * 0.6, 0.03, false);
+      this._bell(this._note(clamp((mult | 0) - 1, 0, 4), 2), t + 0.03, 0.6, 0.16, s * 0.4);
     }
 
     // something went by: falls in pitch, panned to its side
@@ -325,18 +325,18 @@
       const t = ctx.currentTime;
       if (t - this._pt < 0.035) return;                          // a row of trees is one rush, not thirty
       this._pt = t;
-      const pan = (side < 0 ? -1 : side > 0 ? 1 : 0) * 0.8, v = 0.1 + 0.3 * clamp(+strength || 0, 0, 1);
+      const pan = (side < 0 ? -1 : side > 0 ? 1 : 0) * 0.8, v = 0.07 + 0.2 * clamp(+strength || 0, 0, 1);
       if (kind === 'fence') {                                    // slats flutter
-        for (let i = 0; i < 3; i++) this._noise(this.white, 'bandpass', 2400 - i * 350, 1300 - i * 200, 2.2, t + i * 0.042, 0.05, v * (1 - i * 0.2), pan, 0.006, false);
-      } else if (kind === 'rock') this._noise(this.white, 'bandpass', 2600, 800, 2.6, t, 0.11, v * 1.2, pan, 0.01, false);
-      else if (kind === 'pine' || kind === 'pines') this._noise(this.pink, 'bandpass', 1000, 300, 0.8, t, 0.26, v * 2.4, pan, 0.05, false);
+        for (let i = 0; i < 3; i++) this._noise(this.white, 'bandpass', 2400 - i * 350, 1300 - i * 200, 2.2, t + i * 0.042, 0.05, v * 1.6 * (1 - i * 0.2), pan, 0.006, false);
+      } else if (kind === 'rock') this._noise(this.white, 'bandpass', 2600, 800, 2.6, t, 0.11, v * 1.6, pan, 0.01, false);
+      else if (kind === 'pine' || kind === 'pines') this._noise(this.pink, 'bandpass', 1000, 300, 0.8, t, 0.26, v * 1.5, pan, 0.05, false);
       else this._noise(this.white, 'bandpass', 1600, 450, 1.3, t, 0.2, v, pan, 0.02, false);
     }
 
     // whumpf
     land(v) {
       const ctx = this.ctx; if (!ctx || this.muted) return;
-      const t = ctx.currentTime, k = clamp((+v || 0) / 32, 0.15, 1);
+      const t = ctx.currentTime, k0 = clamp((+v || 0) / 32, 0.15, 1), k = k0 * (0.4 + 0.6 * k0);
       this._tone('sine', 105, 46, t, 0.24, 0.6 * k, 0, false, 0.006);
       this._noise(this.pink, 'lowpass', 900, 160, 0.5, t, 0.3, 1.1 * k, 0, 0.012, false);
       this._noise(this.white, 'bandpass', 2800, 1200, 0.8, t + 0.01, 0.2, 0.14 * k, 0, 0.02, false);
@@ -351,7 +351,7 @@
         this._noise(this.white, 'bandpass', 1500, 900, 2.5, tt, 0.05, 0.22, pan, 0.004, false);
         this._tone('sine', 190, 95, tt, 0.09, 0.26, pan, false, 0.004);
       }
-      this._noise(this.pink, 'bandpass', 350, 2200, 0.7, t + 0.05, 0.5, 0.75, 0, 0.35, false);
+      this._noise(this.pink, 'bandpass', 350, 2200, 0.7, t + 0.05, 0.5, 0.6, 0, 0.35, false);
     }
 
     // a thud and a burst of snow, coloured by what was hit
@@ -383,7 +383,7 @@
     fall() {
       const ctx = this.ctx; if (!ctx || this.muted) return;
       const t = ctx.currentTime;
-      this._noise(this.pink, 'bandpass', 1300, 180, 0.6, t, 1.3, 0.9, 0, 0.06, false);
+      this._noise(this.pink, 'bandpass', 1300, 180, 0.6, t, 1.3, 0.6, 0, 0.06, false);
       this._tone('sine', 520, 150, t, 0.9, 0.05, 0, true, 0.05);
     }
 
@@ -439,27 +439,27 @@
 
       // music: under the effects in a run, calm on the title, ducked and dark when you are down
       let mg = 0.2, mf = 500;
-      if (run) { mg = 0.46 + 0.1 * I; mf = 3000 + 7000 * I + 1500 * b; } else if (mode === 'title') { mg = 0.5; mf = 2600; } else if (mode === 'dead') { mg = 0.24; mf = 650; }
+      if (run) { mg = 0.3 + 0.05 * I; mf = 3000 + 7000 * I + 1500 * b; } else if (mode === 'title') { mg = 0.5; mf = 2600; } else if (mode === 'dead') { mg = 0.16; mf = 650; }
       this._to(0, this.music.gain, mg, mode === 'dead' ? 0.3 : 0.15);
       this._to(1, this.musicF.frequency, mf, 0.3);
       this._to(2, this.mvs.gain, mg * 0.8, 0.2);
 
       // skis on snow. On ice the hiss thins and brightens and the rumble falls away: glide.
-      this._to(3, this.hiss.g.gain, g * (0.07 + 0.2 * sp) * (1 - 0.25 * b), 0.04);
+      this._to(3, this.hiss.g.gain, g * (0.022 + 0.07 * sp) * (1 - 0.25 * b), 0.04);
       this._to(4, this.hiss.f.frequency, 2400 + 2400 * sp + 2600 * b, 0.06);
-      this._to(5, this.carveG.gain, g * ac * Math.sqrt(ac) * (0.3 + 0.5 * sp), 0.02);
+      this._to(5, this.carveG.gain, g * ac * Math.sqrt(ac) * (0.11 + 0.19 * sp), 0.02);
       this._to(6, this.carveA.frequency, 3000 + 1600 * sp + 900 * ac, 0.04);
       this._to(7, this.carveB.frequency, 750 + 450 * sp, 0.04);
       if (this.carveP) this._to(8, this.carveP.pan, c * 0.4, 0.03);
-      this._to(9, this.rumble.g.gain, g * (0.5 + 1.1 * sp) * (1 - 0.65 * b), 0.05);
-      this._to(12, this.edge.g.gain, g && p.edge ? 0.12 + 0.12 * sp : 0, 0.03);
+      this._to(9, this.rumble.g.gain, g * (0.028 + 0.044 * sp) * (1 - 0.65 * b), 0.05);
+      this._to(12, this.edge.g.gain, g && p.edge ? 0.13 + 0.09 * sp : 0, 0.03);
 
       // wind: rises with speed and boost, and is all that is left in the air
       let wg = 0, wf = 320;
       if (run) {
-        wg = (0.1 + 1.0 * sp * sp) * (1 + 0.4 * b) * (1 + air * (0.5 + 0.3 * clamp(+p.air || 0, 0, 1)));
+        wg = (0.03 + 0.15 * sp * sp) * (1 + 0.4 * b) * (1 + air * (0.5 + 0.3 * clamp(+p.air || 0, 0, 1)));
         wf = 380 + 900 * sp + 450 * b + 150 * air;
-      } else if (mode !== 'pause') wg = 0.07;
+      } else if (mode !== 'pause') wg = 0.035;
       this._to(10, this.wind.g.gain, wg, 0.1);
       this._to(11, this.wind.f.frequency, wf, 0.15);
     }
