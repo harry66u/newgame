@@ -71,9 +71,11 @@ js/gfx/stub.js        stand-ins until real layers land  core
 js/gfx/sky.js         sky, sun, far mountains, valley   sky
 js/gfx/scenery.js     rock spires in the mid-distance   sky
 js/gfx/flora.js       pines: obstacles and forest       flora
-js/gfx/props.js       rocks, fences, ice, banners, poles props
+js/gfx/props.js       boulders, safety fences, ice strips  props
+js/gfx/markers.js     run banners, piste marker poles   markers
 js/gfx/skier.js       the skier                         skier
-js/gfx/snowfx.js      powder, ski tracks, snow in the air  snowfx
+js/gfx/snowfx.js      powder spray, bursts, spindrift   snowfx
+js/gfx/tracks.js      ski tracks, crystals in the air   tracks
 tests/, tools/        bots, playtests, screenshots, build  tests/build
 ```
 
@@ -109,7 +111,8 @@ FL.Gfx.layer({
 - If any call throws, the core logs it and switches that layer off; the game carries on.
   A shader that fails to compile throws from `R.program`, so a broken shader shows up as
   `layerName(DEAD)` in `tools/shot.mjs` output. Treat that as a failure to fix.
-- Orders in use: piste 10, props 20, flora 30, skier 40, scenery 50, snowfx 60, sky 90
+- Orders in use: piste 10, tracks 12, props 20, markers 22, flora 30, skier 40, scenery 50,
+  snowfx 60, dust 62, sky 90
   (the sky draws last in the opaque pass with `gl.depthFunc(gl.LEQUAL)` at depth 1).
 
 ### R, the renderer
@@ -237,6 +240,8 @@ node tools/shot.mjs --out /path/shot.png                      # 9 s into a run, 
 node tools/shot.mjs --out a.png --state title
 node tools/shot.mjs --out a.png --until slalom --frames 40    # inside a slalom section
 node tools/shot.mjs --out a.png --ff 20 --steer L40,R40 --frames 80 --every 20   # a motion strip while carving
+node tools/shot.mjs --out a.png --ff 20 --steer L40,R40 --frames 80 --every 20 --sheet 3   # ...as ONE contact sheet
+node tools/sheet.mjs --out all.png --cols 3 a.png b.png c.png   # tile separate shots into one image
 node tools/shot.mjs --out a.png --only piste,flora            # just these layers
 node tools/shot.mjs --out a.png --size 390x844 --touch --dpr 2   # a phone
 node tools/shot.mjs --out a.png --until field --debug          # overlay the real hit boxes and kill lines

@@ -16,6 +16,8 @@
    --steer <pattern>   scripted input for the rendered frames instead of the bot, e.g. "L30,N10,R45" (frames at 60 Hz)
    --frames <n>        then render n frames at 1/60 s each (default 20) — effects need frames to build up
    --every <k>         also save a screenshot every k rendered frames (a motion strip)
+   --sheet <cols>      with --every: write ONE image to --out instead, the strip tiled <cols> per row
+   --tile <px>         width of each tile on that sheet (default 640)
    --eval <js>         run this in the page just before the final screenshot; its result is printed
    --stats             print frame cost (CPU ms per frame) and what was drawn
    --debug             overlay what the simulation collides with: obstacle hit boxes (red), boost strips (green),
@@ -25,6 +27,7 @@
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { sheet } from './sheet.mjs';
 const require = createRequire(import.meta.url);
 let chromium;
 try { ({ chromium } = require('playwright')); } catch (e) { ({ chromium } = require('/opt/node-tools/node_modules/playwright')); }
@@ -81,6 +84,7 @@ const steer = [];
 if (opt.steer) for (const part of String(opt.steer).split(',')) { const d = { L: -1, R: 1, N: 0 }[part[0]] ?? 0; for (let i = 0, n = +part.slice(1) || 1; i < n; i++) steer.push(d); }
 const frames = +(opt.frames ?? 20), every = +(opt.every || 0);
 const base = opt.out.replace(/\.png$/i, '');
+const strip = opt.sheet ? [] : null;
 let cost = 0, shots = 0;
 for (let f = 0; f < frames; f++) {
   cost += await page.evaluate((d) => {
@@ -88,11 +92,14 @@ for (let f = 0; f < frames; f++) {
     if (d !== null) g.bot = () => d;
     const t0 = performance.now(); g.tick(1 / 60); return performance.now() - t0;
   }, opt.steer ? (steer[f] ?? 0) : null);
-  if (every && (f + 1) % every === 0 && f + 1 < frames) await page.screenshot({ path: `${base}-${String(++shots).padStart(2, '0')}.png` });
+  if (every && (f + 1) % every === 0 && f + 1 < frames) {
+    if (strip) strip.push(await page.screenshot()); else await page.screenshot({ path: `${base}-${String(++shots).padStart(2, '0')}.png` });
+  }
 }
 if (opt.eval) console.log('eval:', JSON.stringify(await page.evaluate(opt.eval)));
 await page.waitForTimeout(120);
-await page.screenshot({ path: opt.out });
+if (strip) { strip.push(await page.screenshot()); await sheet(strip, opt.out, +opt.sheet || 3, +(opt.tile || 640), browser); }
+else await page.screenshot({ path: opt.out });
 const info = await page.evaluate(() => {
   const g = FL.game, s = g.st, ch = g.track.chunkAt(s.s);
   return { mode: g.mode, s: Math.round(s.s), u: +s.u.toFixed(1), o: +s.o.toFixed(1), mult: s.mult, score: Math.round(s.score), onGround: s.onGround,
