@@ -45,8 +45,16 @@
   }
 
   // cause: 'crash' | 'fall'.  into: what was hit — 'pine' | 'pines' | 'rock' | 'fence' | 'trees' (the forest edge).
-  function die(st, ev, cause, into) {
+  function die(st, ev, cause, into, ob) {
     st.alive = false; st.cause = cause; st.into = into || ''; st.deadT = 0;
+    if (cause === 'crash') {
+      /* Hitting something stops you. Shed most of the speed at once and glance off to the side it
+         was clipped on (or back toward the piste, off the forest edge), so the wreck stays in
+         front of the camera instead of sliding on through whatever was hit. */
+      const side = ob ? (st.o >= ob.o ? 1 : -1) : (st.vo > 0.5 ? -1 : st.vo < -0.5 ? 1 : st.o > 0 ? -1 : 1);
+      st.vo = side * (2.5 + st.u * 0.05);
+      st.u *= 0.26;
+    }
     if (ev) ev.push({ type: 'dead', cause, into: st.into });
   }
 
@@ -59,6 +67,7 @@
       st.deadT += DT;
       st.u *= Math.exp(-2.6 * DT);
       st.s += st.u * DT;
+      if (st.cause === 'crash') { st.vo *= Math.exp(-3.2 * DT); st.o += st.vo * DT; }
       return;
     }
     if (!st.started) return;
@@ -137,7 +146,7 @@
       let ds = Math.abs(st.s - ob.s) - ob.hz, dOff = Math.abs(st.o - ob.o) - ob.hx;
       if (ds < 0) ds = 0;
       if (dOff < 0) dOff = 0;
-      if (ds * ds + dOff * dOff < C.HIT_R * C.HIT_R) { die(st, ev, 'crash', ob.kind); return; }
+      if (ds * ds + dOff * dOff < C.HIT_R * C.HIT_R) { die(st, ev, 'crash', ob.kind, ob); return; }
       if (sPrev < ob.s && st.s >= ob.s) {
         const cl = Math.abs(st.o - ob.o) - ob.hx - C.R;
         if (cl < st.minCl) st.minCl = cl;

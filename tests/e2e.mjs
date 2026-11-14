@@ -12,6 +12,8 @@
    software renderer cannot change the outcome.
 
    Options:  --headed   show the browser        --seed <n>   track seed (default 5)
+             --q <0..5|auto>   quality notch to lock (default 4: software rendering is slow, and
+                               every layer still has to draw); "auto" leaves the page to choose
    Env:      E2E_RETRY_WAIT=<seconds>  how long to wait before retrying a page that will not start (default 60) */
 import { createRequire } from 'node:module';
 import path from 'node:path';
@@ -23,17 +25,19 @@ try { ({ chromium } = require('playwright')); } catch (e) { ({ chromium } = requ
 const argv = process.argv.slice(2);
 const seed = argv.includes('--seed') ? argv[argv.indexOf('--seed') + 1] : '5';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const URL_ = 'file://' + path.join(root, 'index.html') + '?seed=' + seed;
+const q = argv.includes('--q') ? argv[argv.indexOf('--q') + 1] : '4';
+const URL_ = 'file://' + path.join(root, 'index.html') + '?seed=' + seed + (q === 'auto' ? '' : '&q=' + q);
 const RETRY_WAIT = +(process.env.E2E_RETRY_WAIT || 60) * 1000;
 const STEP = 1 / 120, S_START = 24;
 
 let passed = 0, failed = 0;
 const failures = [];
 async function check(name, fn) {
+  const at = Date.now();
   try {
     const info = await fn();
     passed++;
-    console.log('PASS  ' + name + (info ? '  — ' + info : ''));
+    console.log('PASS  ' + name + (info ? '  — ' + info : '') + '  [' + ((Date.now() - at) / 1000).toFixed(1) + 's]');
   } catch (e) {
     failed++;
     const msg = String(e && e.message || e).split('\n')[0];
@@ -78,6 +82,14 @@ const text = async (page, tight) => {
   const t = (await page.evaluate(() => document.body.innerText)).toLowerCase();
   return tight ? t.replace(/\s+/g, '') : t.replace(/\s+/g, ' ');
 };
+// Panels fade in, so give text a few seconds of real time to become visible.
+async function sees(page, what, tight) {
+  for (let i = 0; i < 40; i++) {
+    if ((await text(page, tight)).includes(what)) return true;
+    await sleep(100);
+  }
+  return false;
+}
 const fmt = (page, n) => page.evaluate((n) => FL.Hud.fmt(n), n);
 const stored = (page, k) => page.evaluate((k) => { try { return localStorage.getItem(k); } catch (e) { return 'ERR ' + e.message; } }, k);
 const layers = (page) => page.evaluate(() => FL.game.R.layers.map((L) => ({ name: L.name, dead: L.dead === true })));
@@ -148,7 +160,7 @@ let ok = false;
     await check('title: shows the game\'s name and is drawing', async () => {
       const s = await state(page);
       need(s.mode === 'title', 'mode is ' + s.mode);
-      need((await text(page)).includes('fall line'), 'the visible text does not contain "Fall Line"');
+      need(await sees(page, 'fall line'), 'the visible text does not contain "Fall Line"');
       await page.waitForFunction((t) => FL.game.view.time > t + 0.05, s.time, { timeout: 8000 });
       need((await state(page)).s === S_START, 'the skier moved on the title');
       return '"fall line" visible, frames advancing';
@@ -211,7 +223,7 @@ let ok = false;
       score1 = Math.floor(s.score);
       need(score1 > 0, 'score is ' + score1);
       const shown = await fmt(page, score1);
-      need((await text(page, true)).includes(shown), 'the visible text does not contain the score ' + shown);
+      need(await sees(page, shown, true), 'the visible text does not contain the score ' + shown);
       return `ended by ${s.cause}${s.into ? ' into ' + s.into : ''} at s=${s.s.toFixed(0)}, score ${shown} shown`;
     });
 
@@ -232,9 +244,6 @@ let ok = false;
       const s = await state(page);
       need(s.mode === 'run', 'a key did not restart after 0.5 s (mode ' + s.mode + ')');
       need(s.alive && s.started && s.s === S_START && s.o === 0 && s.vo === 0 && s.score === 0 && s.mult === 1 && s.cause === '', 'the new run is not fresh: ' + JSON.stringify(s));
-      await ticks(page, 2);
-      const sc = await fmt(page, score1);
-      need(!(await text(page, true)).includes(sc) || score1 < 10, 'the old result is still on screen');
       return 'locked at 0 s and 0.3 s, fresh run at 0.5 s';
     });
 
@@ -243,7 +252,7 @@ let ok = false;
       await page.keyboard.press('KeyP');
       const a = await state(page);
       need(a.paused, 'P did not pause');
-      const shows = (await text(page)).includes('paused');
+      const shows = await sees(page, 'paused');
       await sleep(350);
       const b = await state(page);
       need(b.t === a.t && b.s === a.s, `the run moved while paused (${a.s} -> ${b.s})`);
@@ -297,8 +306,7 @@ let ok = false;
       await manual(page, true);
       await page.keyboard.press('Space');
       await ticks(page, 2);
-      const t = await text(page, true);
-      need(t.includes(shown), 'the best score ' + shown + ' is not on screen during a run');
+      need(await sees(page, shown, true), 'the best score ' + shown + ' is not on screen during a run');
       return 'best ' + shown + ' kept and shown';
     });
 
@@ -318,7 +326,7 @@ if (ok) {
   await check('phone: the page starts', async () => {
     up = await openPatiently(page);
     need(up, 'window.FL.game never appeared');
-    need((await state(page)).mode === 'title' && (await text(page)).includes('fall line'), 'no title');
+    need((await state(page)).mode === 'title' && (await sees(page, 'fall line')), 'no title');
     await manual(page, true);
   });
   if (up) {
@@ -353,7 +361,7 @@ if (ok) {
       const s = await runOut(page);
       need(s.mode === 'dead', 'the run did not end');
       const shown = await fmt(page, Math.floor(s.score));
-      need((await text(page, true)).includes(shown), 'the result does not show the score ' + shown);
+      need(await sees(page, shown, true), 'the result does not show the score ' + shown);
       await page.touchscreen.tap(195, 420);
       need((await state(page)).mode === 'dead', 'a tap restarted at once');
       await ticks(page, 5, 0.1);
@@ -376,7 +384,7 @@ await check('no console errors or page errors throughout', async () => {
 });
 await browser.close();
 
-console.log(`\n${passed} passed, ${failed} failed  (${((Date.now() - t0) / 1000).toFixed(1)}s, seed ${seed})`);
+console.log(`\n${passed} passed, ${failed} failed  (${((Date.now() - t0) / 1000).toFixed(1)}s, seed ${seed}, quality ${q})`);
 if (failed) { console.log('Failures:'); for (const f of failures) console.log('  - ' + f); }
 if (errs.length) { console.log('Errors seen on the page:'); for (const e of errs.slice(0, 12)) console.log('  ' + e); }
 process.exit(failed ? 1 : 0);

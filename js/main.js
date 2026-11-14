@@ -76,7 +76,8 @@
   }
 
   function onDead(e) {
-    mode = 'dead'; deadAt = tReal; ts = tsTarget = 0.28;
+    // a beat of near-stillness on impact, then time runs on so the wipe-out plays out while the result comes up
+    mode = 'dead'; deadAt = tReal; ts = calm ? 0.6 : e.cause === 'crash' ? 0.1 : 0.35; tsTarget = 0.8;
     cam.trauma = calm ? 0.25 : e.cause === 'crash' ? 1 : 0.55;
     flash = calm ? 0 : e.cause === 'crash' ? 0.22 : 0.06;
     if (e.cause === 'crash') audio.crash(e.into); else audio.land(26);
@@ -136,12 +137,14 @@
     if (e.metaKey || e.ctrlKey || e.altKey) return;
     const side = SIDE[e.code];
     if (side) { key(side, true); e.preventDefault(); }
-    if (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'ArrowDown') e.preventDefault();
+    if ((e.code === 'Space' && !Hud.isMuteTarget(e.target)) || e.code === 'ArrowUp' || e.code === 'ArrowDown') e.preventDefault();
     if (e.repeat) return;
     Hud.setTouch(false);
     if (e.code === 'KeyM') { audio.init(); toggleMute(); return; }
     if (e.code === 'KeyP' || e.code === 'Escape') { if (mode === 'run') setPaused(!paused); return; }
     if (IGNORE[e.code] || /^F\d+$/.test(e.code)) return;
+    // Space or Enter on the focused mute button is for the button, not a start/retry
+    if (Hud.isMuteTarget(e.target) && (e.code === 'Space' || e.code === 'Enter')) return;
     press();
   });
   window.addEventListener('keyup', (e) => { const side = SIDE[e.code]; if (side) key(side, false); });
