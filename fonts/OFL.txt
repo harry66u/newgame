@@ -1,10 +1,10 @@
 Fonts in this folder
 ===================
 
-Tilt Neon — Copyright 2019 The Tilt Project Authors (https://github.com/googlefonts/Tilt-Fonts)
-Barlow Semi Condensed — Copyright 2017 The Barlow Project Authors (https://github.com/jpt/barlow)
+Barlow Condensed (600, 800 italic) and Barlow Semi Condensed (500, 600), latin subsets as packaged by
+Fontsource — Copyright 2017 The Barlow Project Authors (https://github.com/jpt/barlow)
 
-Both are licensed under the SIL Open Font License, Version 1.1, reproduced below.
+Both families are licensed under the SIL Open Font License, Version 1.1, reproduced below.
 
 This Font Software is licensed under the SIL Open Font License, Version 1.1.
 This license is copied below, and is also available with a FAQ at:
