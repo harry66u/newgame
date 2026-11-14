@@ -36,7 +36,7 @@
 
   // events wait here until the next frame, when the skier's position is fresh
   const PT = new Uint8Array(16), PA = new Float32Array(16);
-  let pn = 0, passSide = 1, pendDead = false;
+  let pn = 0, passSide = 1, crashed = false;
   let accSpray = 0, accChip = 0, accLip = 0, accDrift = 0;
   let lvx = 0, lvz = 0;                                // the skier's last velocity while alive (for the wipe-out)
 
@@ -67,7 +67,7 @@
       DRAG[i] = 2.2; GRAV[i] = 4;
     }
   }
-  Gfx.fx = { puff };
+  Gfx.fx = { puff, count: () => n };                   // count: live particles, for tests and the stats line
 
   // ---------------------------------------------------------------- shaders
   const VS = `
@@ -201,10 +201,10 @@ void main(){
     G.ok = true;
 
     // ---- move what is alive
-    /* Carried particles ride along with the skier (all of the forward motion, a third of the
+    /* Carried particles ride along with the skier (all of the forward motion, most of the
        sideways, so a carve leaves its spray out where it was thrown) and relax toward the
        apparent wind, which streams them back. */
-    const cdx = (sn * u + cs * vo * 0.35) * dt, cdz = (-cs * u + sn * vo * 0.35) * dt;
+    const cdx = (sn * u + cs * vo * 0.6) * dt, cdz = (-cs * u + sn * vo * 0.6) * dt;
     const wind = alive ? 4 + u * 0.14 : 0, wx = -hx * wind, wz = -hz * wind;
     for (let i = 0; i < n;) {
       const age = AGE[i] + dt;
@@ -225,24 +225,27 @@ void main(){
     // ---- events since the last frame
     if (pn > 3) pn = 0;                                 // a fast-forward queued a pile of them: stale, except a wipe-out
     for (let j = 0; j < pn; j++) burst(PT[j], PA[j], R, v, hx, hz, rx, rz);
-    if (pendDead) burst(4, 0, R, v, hx, hz, rx, rz);
-    pn = 0; pendDead = false;
+    pn = 0;
+    // the wipe-out is read from the state, not the event, so it cannot be missed or doubled
+    if (v.alive) crashed = false;
+    else if (!crashed) { crashed = true; if (v.cause === 'crash' && v.deadT < 0.6) burst(4, 0, R, v, hx, hz, rx, rz); }
 
     // ---- steady emission, by time so 60 and 120 Hz get the same snow
     if (alive && v.skierOn && v.onGround && u > 6 && dt > 0) {
       const carve = v.carve || 0, k = Math.min(1, Math.abs(carve)), pw = Math.pow(k, 1.3);
       const sp = Math.max(0.55, Math.min(1.45, u / 38));
       // spray off the skis: a mist when running straight, a rooster tail in a hard carve
-      accSpray += Math.min(560, 380 * Math.min(u / 45, 1.6) * (0.15 + pw)) * qK * dt;
+      accSpray += Math.min(640, 500 * Math.min(u / 45, 1.6) * (0.15 + pw)) * qK * dt;
       let m = 0;
       while (accSpray >= 1 && m++ < 48) {
         accSpray -= 1;
         const side = k > 0.1 ? (carve > 0 ? -1 : 1) : (rnd() < 0.5 ? -1 : 1);       // thrown to the outside of the turn
         const along = 0.2 - 1.1 * rnd(), lat = side * (0.08 + 0.26 * rnd()), thr = 0.35 + 0.65 * rnd();
-        const out = side * (0.9 + 6.2 * pw * thr) * sp + (rnd() - 0.5) * 1.3, back = rnd() * 1.6;
-        const up = (0.45 + 3.9 * pw * thr * (0.55 + 0.45 * rnd())) * sp;
+        const out = side * (0.8 + 4.6 * pw * thr) * sp + (rnd() - 0.5) * 1.3, back = rnd() * 1.6;
+        const up = (0.5 + 5.4 * pw * thr * (0.5 + 0.5 * rnd())) * Math.min(sp, 1.25);
         const i = add(sk.x + hx * along + rx * lat, sk.z + hz * along + rz * lat, 0.05, rx * out - hx * back, up, rz * out - hz * back,
-          0.42 + 0.4 * rnd() + 0.25 * pw, 0.09 + 0.07 * rnd(), 0.32 + 0.42 * rnd() + 0.3 * pw, (0.3 + 0.3 * pw) * (qK < 1 ? 1.2 : 1), true);
+          0.34 + 0.34 * rnd() + 0.22 * pw, 0.1 + 0.07 * rnd(), 0.28 + 0.36 * rnd() + 0.22 * pw, (0.36 + 0.36 * pw) * (qK < 1 ? 1.2 : 1), true);
+        GRAV[i] = 6.5;
         const pre = rnd() * dt;                          // spread births across the frame
         AGE[i] = pre; X[i] += VX[i] * pre; Z[i] += VZ[i] * pre; H[i] += VH[i] * pre;
       }
@@ -313,13 +316,12 @@ void main(){
     if (t === 'land') { code = 1; a = Math.abs(e.v) || 0; }
     else if (t === 'boost') code = 2;
     else if (t === 'flow') { if (e.why !== 'near') return; code = 3; a = passSide; }
-    else if (t === 'dead') { if (e.cause === 'crash') pendDead = true; return; }
     else if (t === 'fall') code = 5;
     else return;
     if (pn < 16) { PT[pn] = code; PA[pn] = a; pn++; }
   }
 
-  function reset() { n = 0; pn = 0; pendDead = false; accSpray = accChip = accLip = accDrift = 0; lvx = lvz = 0; G.ok = false; }
+  function reset() { n = 0; pn = 0; crashed = false; accSpray = accChip = accLip = accDrift = 0; lvx = lvz = 0; G.ok = false; }
 
   Gfx.layer({ name: 'snowfx', order: 60, init, prepare, drawBlend, onEvent, reset });
 })(typeof window !== 'undefined' ? window : globalThis);

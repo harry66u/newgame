@@ -27,6 +27,7 @@
   const PW = 0.11;              // post half-width
   const POST_SUNK = 14;         // open edges drop away into rock: the posts are footed well down the face
   const COLS = 24;              // fabric columns: enough for the sag and the sway to read as curves
+  const CREST = 1.75;           // the middle of the banner stands up into a crest this many times its height, carrying the symbol
   const SYM = { circle: 0, square: 1, diamond: 2 };
 
   const VS_POLE = `
@@ -57,8 +58,8 @@ layout(location=0) in vec4 aP;      // posts: a cube corner. fabric: x -1..1 acr
 layout(location=1) in vec4 aN;      // posts: normal, w: which post (-1 left, 1 right)
 uniform vec4 uAt;                   // xyz: the centreline under the banner, camera-relative.  w: yaw
 uniform vec4 uDim;                  // x: half-span to the posts.  y, z: ground at the left / right post, relative to uAt.y.  w: height of the fabric's bottom edge
-uniform float uPh;
-out vec3 vW; out vec3 vN; out vec3 vUV;   // vUV: x metres from the middle, y 0..1 up the fabric, z 1 on fabric
+uniform float uPh, uCnt;
+out vec3 vW; out vec3 vN; out vec3 vUV;   // vUV: x metres from the middle, y 0..1 up the fabric (on up to CREST in the crest), z 1 fabric, 2 crest
 void main(){
   float cs = cos(uAt.w), sn = sin(uAt.w);
   vec3 l, n;
@@ -69,13 +70,15 @@ void main(){
     n = aN.xyz; vUV = vec3(0.0);
   } else {
     // pinned at the posts, sagging between them, the loose bottom edge swinging more than the top
-    float u = aP.x, env = 1.0 - u * u, ph = uTime * 1.6 + u * 2.2 + uPh, ph2 = uTime * 4.3 + u * 9.0 + uPh * 1.7;
+    // the crest is cut from the same cloth: it hangs and swings as the banner does where it is sewn on
+    float u = aP.w > 1.5 ? aP.x * (uCnt * ${f1(0.525 * CREST)} + 0.4) / (uDim.x - ${f1(PW)}) : aP.x;
+    float env = 1.0 - u * u, ph = uTime * 1.6 + u * 2.2 + uPh, ph2 = uTime * 4.3 + u * 9.0 + uPh * 1.7;
     float amp = 0.10 + 0.12 * (1.0 - aP.y);
     float z = env * (amp * sin(ph) + 0.03 * sin(ph2));
     float dz = env * (amp * 2.2 * cos(ph) + 0.27 * cos(ph2)) - 2.0 * u * (amp * sin(ph) + 0.03 * sin(ph2));
-    l = vec3(u * (uDim.x - ${f1(PW)}), mix(uDim.y, uDim.z, u * 0.5 + 0.5) + uDim.w + aP.y * ${f1(BH)} - env * mix(0.34, 0.16, aP.y), z);
+    l = vec3(u * (uDim.x - ${f1(PW)}), mix(uDim.y, uDim.z, u * 0.5 + 0.5) + uDim.w + aP.y * ${f1(BH)} - env * mix(0.34, 0.16, aP.y), z + (aP.w > 1.5 ? 0.06 : 0.0));
     n = normalize(vec3(-dz / uDim.x * 6.0, 0.1, 1.0));          // folds exaggerated: they are what makes it cloth
-    vUV = vec3(l.x, aP.y, 1.0);
+    vUV = vec3(l.x, aP.y, aP.w);
   }
   vW = uAt.xyz + vec3(cs * l.x - sn * l.z, l.y, sn * l.x + cs * l.z);
   vN = vec3(cs * n.x - sn * n.z, n.y, sn * n.x + cs * n.z);
@@ -91,15 +94,23 @@ void main(){
   float thru = 0.0;
   if (vUV.z > 0.5) {
     if (dot(n, vW) > 0.0) n = -n;                               // cloth has two sides: light the one we see
-    vec2 p = vec2(vUV.x, (vUV.y - 0.5) * ${f1(BH)});
-    float k = clamp(floor(p.x / 1.05 + uCnt * 0.5), 0.0, uCnt - 1.0);
-    p.x -= (k - (uCnt - 1.0) * 0.5) * 1.05;
-    vec2 a = abs(p);
-    float d = uCol.w < 0.5 ? length(p) - 0.46 : (uCol.w < 1.5 ? max(a.x, a.y) - 0.40 : a.x * 1.2 + a.y - 0.52);
-    float aa = fwidth(d) + 1e-4, fw = fwidth(vUV.y) + 1e-4;
-    float sym = 1.0 - smoothstep(-aa, aa, d);
-    float hem = smoothstep(0.44 - fw, 0.44 + fw, abs(vUV.y - 0.5));   // a white hem top and bottom
-    alb = mix(uCol.rgb, vec3(0.95), max(sym, hem));
+    float m;
+    if (vUV.z > 1.5) {
+      // the crest: the run's symbol, big enough to read from well up the slope, in a white border
+      vec2 p = vec2(vUV.x, (vUV.y - ${f1(CREST * 0.5)}) * ${f1(BH)}) / ${f1(CREST)};
+      float k = clamp(floor(p.x / 1.05 + uCnt * 0.5), 0.0, uCnt - 1.0);
+      p.x -= (k - (uCnt - 1.0) * 0.5) * 1.05;
+      vec2 a = abs(p);
+      float d = uCol.w < 0.5 ? length(p) - 0.44 : (uCol.w < 1.5 ? max(a.x, a.y) - 0.38 : a.x * 1.2 + a.y - 0.50);
+      float aa = fwidth(d) + 1e-4;
+      float e = min(uCnt * ${f1(0.525 * CREST)} + 0.4 - abs(vUV.x), (${f1(CREST * 0.5)} - abs(vUV.y - ${f1(CREST * 0.5)})) * ${f1(BH)});   // metres in from its edge
+      float ew = fwidth(e) + 1e-4;
+      m = max(1.0 - smoothstep(-aa, aa, d), 1.0 - smoothstep(0.10 - ew, 0.10 + ew, e));
+    } else {
+      float fw = fwidth(vUV.y) + 1e-4;
+      m = smoothstep(0.42 - fw, 0.42 + fw, abs(vUV.y - 0.5));       // a white hem top and bottom
+    }
+    alb = mix(uCol.rgb, vec3(0.95), m);
     thru = max(dot(-n, uSun.xyz), 0.0) * 0.42;                  // the low sun is behind it: some comes through the cloth
   }
   o = vec4(flFog(flLight(alb, n, 1.0) + alb * uSunCol.rgb * thru, vW), 1.0);
@@ -126,9 +137,9 @@ void main(){
     return out;
   }
 
-  // Two posts and a strip of cloth, 8 floats a vertex (see VS_BAN).
+  // Two posts, a strip of cloth and the crest in the middle of it, 8 floats a vertex (see VS_BAN).
   function bannerGeo() {
-    const cube = Gfx.CUBE, out = new Float32Array((72 + COLS * 6) * 8);
+    const cube = Gfx.CUBE, out = new Float32Array((78 + COLS * 6) * 8);
     let j = 0;
     for (let side = -1; side <= 1; side += 2) {
       for (let i = 0; i < 36; i++) {
@@ -137,12 +148,13 @@ void main(){
         out[j++] = cube[q + 3]; out[j++] = cube[q + 4]; out[j++] = cube[q + 5]; out[j++] = side;
       }
     }
-    const put = (u, v) => { out[j++] = u; out[j++] = v; out[j++] = 0; out[j++] = 1; j += 4; };
+    const put = (u, v, kind) => { out[j++] = u; out[j++] = v; out[j++] = 0; out[j++] = kind; j += 4; };
     for (let c = 0; c < COLS; c++) {
       const u0 = (c / COLS) * 2 - 1, u1 = ((c + 1) / COLS) * 2 - 1;
-      put(u0, 0); put(u1, 0); put(u1, 1); put(u0, 0); put(u1, 1); put(u0, 1);
+      put(u0, 0, 1); put(u1, 0, 1); put(u1, 1, 1); put(u0, 0, 1); put(u1, 1, 1); put(u0, 1, 1);
     }
-    banCount = 72 + COLS * 6;
+    put(-1, 0, 2); put(1, 0, 2); put(1, CREST, 2); put(-1, 0, 2); put(1, CREST, 2); put(-1, CREST, 2);
+    banCount = 78 + COLS * 6;
     return out;
   }
 
