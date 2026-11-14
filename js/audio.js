@@ -244,10 +244,10 @@
       // peak: the full pattern
       const acc = st % 4 === 0 ? 1 : st % 2 === 0 ? 0.76 : 0.52;
       this._pluck(t, ch.plk[FULL[st]] + (L > 0.8 && st >= 8 ? 12 : 0), (0.14 + 0.1 * L) * acc * hum);
-      if (st % 4 === 0) this._kick(t, 0.44);
+      if (st % 4 === 0) this._kick(t, 0.38);
       this._shake(t, (st % 4 === 2 ? 0.095 : 0.04) * hum, st % 4 === 2 ? 0.06 : 0.03);
       if (st === 4 || st === 12) this._brush(t, 0.11);
-      if (BASS_F[st]) this._bass(t, ch.root + (st === 13 ? 7 : 0), 0.22, STEP * 3);
+      if (BASS_F[st]) this._bass(t, ch.root + (st === 13 ? 7 : 0), 0.2, STEP * 3);
     }
 
     // kalimba/marimba: a sine with a fast decay and a short knock two octaves up
@@ -447,7 +447,7 @@
       // skis on snow. On ice the hiss thins and brightens and the rumble falls away: glide.
       this._to(3, this.hiss.g.gain, g * (0.022 + 0.07 * sp) * (1 - 0.25 * b), 0.04);
       this._to(4, this.hiss.f.frequency, 2400 + 2400 * sp + 2600 * b, 0.06);
-      this._to(5, this.carveG.gain, g * ac * Math.sqrt(ac) * (0.11 + 0.19 * sp), 0.02);
+      this._to(5, this.carveG.gain, g * ac * Math.sqrt(ac) * (0.12 + 0.24 * sp), 0.02);
       this._to(6, this.carveA.frequency, 3000 + 1600 * sp + 900 * ac, 0.04);
       this._to(7, this.carveB.frequency, 750 + 450 * sp, 0.04);
       if (this.carveP) this._to(8, this.carveP.pan, c * 0.4, 0.03);

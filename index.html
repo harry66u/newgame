@@ -26,6 +26,8 @@
   --body: 'Barlow Semi Condensed', 'Avenir Next Condensed', 'Roboto Condensed', 'Segoe UI', system-ui, sans-serif;
   --lift: 0 1px 2px rgba(var(--shade), 0.6), 0 2px 12px rgba(var(--shade), 0.5);
   --lift-lg: 0 2px 4px rgba(var(--shade), 0.42), 0 6px 30px rgba(var(--shade), 0.42);
+  --lift-hi: 0 1px 2px rgba(var(--shade), 0.85), 0 2px 10px rgba(var(--shade), 0.7), 0 0 26px rgba(var(--shade), 0.45);   /* for amber, and for white over pale ground */
+  --halo: 0 0 2px rgba(255, 255, 255, 0.9), 0 0 14px rgba(255, 255, 255, 0.85);                                         /* under navy ink */
   --edge-t: max(12px, env(safe-area-inset-top, 0px));
   --edge-b: max(16px, env(safe-area-inset-bottom, 0px));
   --edge-l: max(16px, env(safe-area-inset-left, 0px));
@@ -48,25 +50,25 @@ body {
 #hud { position: fixed; inset: 0; pointer-events: none; }
 #top { position: absolute; top: var(--edge-t); left: var(--edge-l); right: var(--edge-r); display: flex; flex-direction: column; align-items: center; }
 #score {
-  font: italic 800 clamp(48px, 9vmin, 84px)/0.92 var(--display); white-space: nowrap; text-shadow: var(--lift-lg);
+  font: italic 800 clamp(48px, 9.5vmin, 88px)/0.92 var(--display); white-space: nowrap; text-shadow: var(--lift-lg);
   contain: layout style; will-change: transform;           /* its own layer: a digit changing repaints only this */
 }
 #score span { display: inline-block; width: 0.5em; text-align: center; }
 #score .sep { width: 0.2em; }
 #flow { display: flex; flex-direction: column; align-items: center; margin-top: clamp(1px, 0.5vmin, 5px); color: var(--sun); opacity: 0; transition: opacity 0.2s; }
 #flow.on { opacity: 1; }
-#mult { display: block; font: italic 800 clamp(26px, 4.6vmin, 40px)/1 var(--display); text-shadow: var(--lift); }
+#mult { display: block; font: italic 800 clamp(28px, 5.2vmin, 46px)/1 var(--display); text-shadow: var(--lift-hi); }
 #flow.max #mult::after { content: 'max'; margin-left: 0.3em; font: normal 600 0.5em/1 var(--display); letter-spacing: 0.1em; text-transform: uppercase; vertical-align: 0.42em; }
 #flowbar { display: block; width: clamp(56px, 9vmin, 84px); height: 3px; margin-top: 4px; border-radius: 2px; overflow: hidden; background: rgba(255, 255, 255, 0.42); box-shadow: 0 1px 6px rgba(var(--shade), 0.5); }
 #flowfill { display: block; height: 100%; border-radius: 2px; background: currentColor; transform-origin: 50% 50%; will-change: transform; }
 #call {
   display: flex; align-items: center; gap: 0.45em; margin-top: clamp(8px, 1.6vmin, 14px); white-space: nowrap; opacity: 0;
-  font: 600 clamp(17px, 2.8vmin, 24px)/1.1 var(--display); letter-spacing: 0.09em; text-transform: uppercase; text-shadow: var(--lift);
+  font: 600 clamp(18px, 3.2vmin, 28px)/1.1 var(--display); letter-spacing: 0.09em; text-transform: uppercase; text-shadow: var(--lift);
 }
 #calltxt { margin-right: -0.09em; }
 #callsym:empty, #call:not(.wave) #callsym { display: none; }
-#call.wave { font-size: clamp(22px, 3.8vmin, 32px); }
-#call.best { color: var(--sun); }
+#call.wave { font-size: clamp(23px, 4.4vmin, 38px); }
+#call.best { color: var(--sun); text-shadow: var(--lift-hi); }
 /* 'Ice' wears a chip of the strip itself */
 #call.boost #calltxt::before { content: ''; display: inline-block; width: 0.95em; height: 0.5em; margin-right: 0.5em; background: var(--ice); border: 1.5px solid #fff; border-radius: 1px; transform: skewX(-20deg); box-shadow: 0 1px 6px rgba(var(--shade), 0.45); }
 #best {
@@ -74,7 +76,7 @@ body {
   font: 600 clamp(15px, 2.3vmin, 18px)/1 var(--display); letter-spacing: 0.09em; text-transform: uppercase; text-shadow: var(--lift);
   font-variant-numeric: tabular-nums;
 }
-#best.new { color: var(--sun); }
+#best.new { color: var(--sun); text-shadow: var(--lift-hi); }
 #mute {
   position: absolute; top: calc(var(--edge-t) - 4px); right: max(6px, env(safe-area-inset-right, 0px)); width: 44px; height: 44px; padding: 10px; margin: 0;
   pointer-events: auto; cursor: pointer; background: none; border: 0; border-radius: 50%; color: var(--snow);
@@ -101,20 +103,21 @@ h1 {
   margin: clamp(8px, 7vh, 84px) 0 0; font: italic 800 min(23vw, 25vh, 230px)/0.84 var(--display); letter-spacing: 0.005em;
   text-transform: uppercase; text-shadow: var(--lift-lg);
 }
-#runs { display: flex; gap: 0.55em; margin-top: clamp(10px, 2.4vh, 24px); font-size: clamp(15px, 2.5vmin, 21px); }
-.how { margin-top: clamp(10px, 2.4vh, 24px) !important; font: 600 clamp(18px, 3vmin, 24px)/1.3 var(--body); text-shadow: var(--lift); }
+#runs { display: flex; gap: 0.55em; margin-top: clamp(10px, 2.4vh, 24px); font-size: clamp(17px, 3vmin, 25px); }
+/* The name owns the sky; everything to read is navy ink on the snow at the skier's feet. */
+.start { display: flex; flex-direction: column; align-items: center; margin-top: auto; margin-bottom: clamp(0px, 4.5vh, 52px); color: var(--ink); text-shadow: var(--halo); }
+.how { font: 600 clamp(18px, 3vmin, 24px)/1.3 var(--body); }
 .key {
   display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; min-width: 1.55em; height: 1.55em; margin: 0 0.1em; padding: 0 0.25em;
-  border: 1.5px solid #fff; border-radius: 0.3em; background: rgba(var(--shade), 0.4); box-shadow: 0 2px 10px rgba(var(--shade), 0.35);
+  border: 1.5px solid currentColor; border-radius: 0.3em; background: rgba(255, 255, 255, 0.6);
   font-size: 0.82em; line-height: 1; text-shadow: none; vertical-align: 0.06em;
 }
 .key svg { display: block; width: 0.95em; height: 0.95em; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-.more { margin-top: 6px !important; max-width: 25em; font: 500 clamp(15px, 2.4vmin, 19px)/1.35 var(--body); text-wrap: balance; text-shadow: var(--lift); }
-.go {
-  margin-top: auto !important; margin-bottom: clamp(10px, 6.5vh, 70px) !important; font: 600 clamp(19px, 3.2vmin, 26px)/1.1 var(--body);
-  color: var(--ink); text-shadow: 0 0 2px #fff, 0 0 12px rgba(255, 255, 255, 0.9); animation: breathe 2.6s ease-in-out infinite;
-}
-@keyframes breathe { 50% { opacity: 0.5; } }
+.more { margin-top: 4px !important; max-width: 25em; font: 500 clamp(15px, 2.4vmin, 19px)/1.35 var(--body); text-wrap: balance; }
+.go { font: 600 clamp(20px, 3.4vmin, 28px)/1.1 var(--body); animation: breathe 2.6s ease-in-out infinite; }
+.start .go { margin-top: clamp(10px, 2.8vh, 28px) !important; }
+@keyframes breathe { 50% { opacity: 0.55; } }
+@media (max-height: 480px) { .start { margin-bottom: 0; } .more { max-width: none; } }
 
 #reach {
   display: flex; align-items: center; gap: 0.5em; margin-top: clamp(14px, 12vh, 130px) !important;
@@ -125,11 +128,12 @@ h1 {
 #record { margin-top: clamp(6px, 1.4vh, 14px) !important; font: 600 clamp(20px, 3.4vmin, 28px)/1.2 var(--body); text-shadow: var(--lift); font-variant-numeric: tabular-nums; }
 #record.new { color: var(--sun); }
 #dist { margin-top: 2px !important; font: 500 clamp(16px, 2.5vmin, 20px)/1.3 var(--body); text-shadow: var(--lift); font-variant-numeric: tabular-nums; }
-#over .go { color: var(--snow); text-shadow: var(--lift); }       /* the scene is drained to a cold blue here */
+/* the scene is drained to a cold blue here, pale where the snow was: white needs the heavier shadow */
+#over .go { margin-top: auto !important; margin-bottom: clamp(10px, 6.5vh, 70px) !important; text-shadow: var(--lift-hi); }
 
 /* portrait phones: the sky is tall, so the name stacks and fills it */
 @media (orientation: portrait) and (max-width: 640px) {
-  h1 { font-size: min(38vw, 17vh); margin-top: clamp(8px, 6vh, 64px); }
+  h1 { font-size: min(42vw, 19vh); margin-top: clamp(8px, 6vh, 64px); }
   h1 span { display: block; }
   #reach { margin-top: 16vh !important; }
 }
@@ -171,9 +175,11 @@ h1 {
 <section id="title" class="panel">
   <h1><span>Fall</span> <span>Line</span></h1>
   <div id="runs" aria-hidden="true"></div>
-  <p class="how"><span class="kb">Steer with <span class="key" aria-label="left arrow"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M13 8H3M7 4 3 8l4 4"/></svg></span><span class="key" aria-label="right arrow"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4"/></svg></span> or <span class="key">A</span><span class="key">D</span></span><span class="tc">Hold the left or right side to steer</span></p>
-  <p class="more">Ice is speed. Ride the ice and cut close to the trees to build your multiplier.</p>
-  <p class="go"><span class="kb">Press any key</span><span class="tc">Tap to start</span></p>
+  <div class="start">
+    <p class="how"><span class="kb">Steer with <span class="key" aria-label="left arrow"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M13 8H3M7 4 3 8l4 4"/></svg></span><span class="key" aria-label="right arrow"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4"/></svg></span> or <span class="key">A</span><span class="key">D</span></span><span class="tc">Hold the left or right side to steer</span></p>
+    <p class="more">Ice is speed. Ride the ice and cut close to the trees to build your multiplier.</p>
+    <p class="go"><span class="kb">Press any key</span><span class="tc">Tap to start</span></p>
+  </div>
 </section>
 
 <section id="over" class="panel" aria-live="polite">

@@ -145,10 +145,10 @@ void main(){
   float ed = min((1.0 - ax) * 1.1, 3.0 - abs(y)), aa = min(fwidth(ed), 0.1) + 0.003;
   // chevrons point downhill and stream that way
   float ph = (y + ax * 0.8) / 1.5 - t * 1.7, fw = fwidth(ph), c = fract(ph);
-  float chev = smoothstep(0.0, 0.05 + fw, c) * (1.0 - smoothstep(0.45, 0.5 + fw, c));
-  chev = mix(chev, 0.45, smoothstep(0.2, 0.55, fw)) * (0.25 + 0.75 * live);
+  float chev = smoothstep(0.0, 0.05 + fw, c) * (1.0 - smoothstep(0.34, 0.39 + fw, c));
+  chev = mix(chev, 0.3, smoothstep(0.2, 0.55, fw)) * (0.25 + 0.75 * live);
   vec3 alb = mix(uDeep, uIce, 0.25 + 0.75 * (1.0 - ax * ax));
-  alb = mix(alb, vec3(0.60, 0.94, 1.0), chev * 0.85);
+  alb = mix(alb, vec3(0.36, 0.88, 1.0), chev * 0.8);
   alb += vec3(0.35, 0.5, 0.55) * (pow(0.5 + 0.5 * sin(y * 0.55 - x * 0.5 - t * 3.2), 8.0) * live);   // a sheen sliding down it
   // a dark lip, then a bright bevel: the cut edge of a strip let into the snow
   float lip = 1.0 - smoothstep(0.06, 0.06 + aa, ed);
