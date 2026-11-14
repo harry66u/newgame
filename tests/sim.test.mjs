@@ -570,8 +570,8 @@ test('rules: ghost steps never mutate the track, and predict the real run', () =
    as used or a row as credited, the ghost collects them again and again — a strip re-fires
    every 0.1 s while the ghost is on it, and a gate (two fences in one row) pays twice. So a
    look-ahead over a strip or through a gate ends up faster and with a higher multiplier than
-   the real run will. Marked todo so the suite stays green; remove the flag when it is fixed. */
-test('rules: a ghost over ice strips and through a gate matches the real run', { todo: 'sim.js: ghosts re-collect strips and rows' }, (t) => {
+   the real run will. */
+test('rules: a ghost over ice strips and through a gate matches the real run', (t) => {
   const { tr, st } = bare();
   const line = { hit: false };
   addPad(tr, 60, 0, line); addPad(tr, 69, 0, line);

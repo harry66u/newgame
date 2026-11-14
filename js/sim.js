@@ -17,6 +17,8 @@
       boost: 0, boostT: 0,
       mult: 1, flowT: 0, score: 0, minCl: 99,
       alive: true, cause: '', into: '', deadT: 0, started: false,
+      // what this state has already collected, so a look-ahead copy cannot collect it twice
+      padS: -1, lastGrp: 0, lastRow: 0, slope: 0,
     };
   }
 
@@ -24,6 +26,7 @@
     Object.assign(st, newState());
     tr.surfaceAt(st.s, 0, 1e9, SF);
     st.y = SF.h;
+    st.slope = tr.frameAt(st.s, FR).sl;
     return st;
   }
 
@@ -36,6 +39,8 @@
   function launch(st) {
     st.started = true;
     st.u = C.baseSpeed(st.s) * 0.55;
+    // already moving with the ground, so the skis are on the snow (and steering at full strength) from the first step
+    st.vy = st.gvy = -st.slope * st.u;
   }
 
   function flowUp(st, ev, why) {
@@ -151,7 +156,8 @@
         const cl = Math.abs(st.o - ob.o) - ob.hx - C.R;
         if (cl < st.minCl) st.minCl = cl;
         if (ev) ev.push({ type: 'pass', side: ob.o > st.o ? 1 : -1, cl, ob });
-        if (cl < C.NEAR && !ob.row.near) {
+        if (cl < C.NEAR && !ob.row.near && ob.row.id !== st.lastRow) {
+          st.lastRow = ob.row.id;
           if (!ghost) ob.row.near = true;
           flowUp(st, ev, 'near');
         }
@@ -163,20 +169,21 @@
     for (let i = 0; i < pads.length; i++) {
       const pd = pads[i];
       if (pd.s - 5 > st.s) break;
-      if (pd.used || Math.abs(st.s - pd.s) > pd.hz + 0.4 || Math.abs(st.o - pd.o) > pd.hx + 0.25) continue;
+      if (pd.used || pd.s <= st.padS || Math.abs(st.s - pd.s) > pd.hz + 0.4 || Math.abs(st.o - pd.o) > pd.hx + 0.25) continue;
       if ((!st.onGround && st.air > 0.2) || st.boostT > C.BOOST_HOLD - 0.1) continue;
       const bv = C.boostV(B);
       st.boost = bv; st.boostT = C.BOOST_HOLD;
       st.u = Math.min(st.u + bv * 0.6, Math.max(st.u, B * C.terrain(fr.sl) + bv));
       if (ev) ev.push({ type: 'boost' });
-      if (!pd.grp.hit) flowUp(st, ev, 'boost');
+      if (!pd.grp.hit && pd.grp.id !== st.lastGrp) flowUp(st, ev, 'boost');
+      st.padS = pd.s; st.lastGrp = pd.grp.id;
       if (!ghost) { pd.used = true; pd.grp.hit = true; }
     }
 
     // --- flow multiplier: decays one level at a time when you coast
     if (st.mult > 1) {
       st.flowT -= DT;
-      if (st.flowT <= 0) {
+      if (st.flowT <= 1e-9) {
         st.mult--; st.flowT = C.FLOW_DROP_T;
         if (ev) ev.push({ type: 'flowDown', mult: st.mult });
       }

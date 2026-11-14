@@ -334,7 +334,7 @@
     _rows(s0, rows) {
       for (const row of rows) {
         if (row.skip) continue;
-        const ref = { near: false };
+        const ref = { near: false, id: this._id() };
         for (const [o, hx, flag] of row.blocks) this._block(s0 + row.ds, o, hx, row.kind, ref, flag);
       }
     }
@@ -352,10 +352,13 @@
       else if (kind === 'pines') { h = 5.2 + 1.2 * seed; hz = 0.8; }
       else if (kind === 'rock') { h = 1.5 + Math.min(hx, 2.4) * 0.4 + 0.5 * seed; hz = 0.9; }
       else { h = 1.7; hz = 0.35; }
-      const ob = { s, o, hx, hz, h, kind, flag: flag || 0, seed, row: ref || { near: false }, e: SF.h - fr.y, b: SF.b, yTop: SF.h + h };
+      const ob = { s, o, hx, hz, h, kind, flag: flag || 0, seed, row: ref || { near: false, id: this._id() }, e: SF.h - fr.y, b: SF.b, yTop: SF.h + h };
       this._obs.push(ob);
       return ob;
     }
+
+    // Rows and strip groups carry a number, so a simulation state can remember which it has been paid for.
+    _id() { return (this._ids = (this._ids || 0) + 1); }
 
     // Boost strip. Strips laid in a line share a group: each one kicks your speed, but the line
     // only counts once toward the multiplier.
@@ -366,13 +369,13 @@
       }
       for (const p of this._pads) if (Math.abs(p.s - s) < 7 && Math.abs(p.o - o) < 2.8) return null;
       const fr = this.frameAt(s, FR);
-      const pd = { s, o, hx: 1.1, hz: 3, e: SF.h - fr.y, b: SF.b, used: false, grp: grp || { hit: false } };
+      const pd = { s, o, hx: 1.1, hz: 3, e: SF.h - fr.y, b: SF.b, used: false, grp: grp || { hit: false, id: this._id() } };
       this._pads.push(pd);
       return pd;
     }
 
     _padLine(s, o, n, step) {
-      const grp = { hit: false };
+      const grp = { hit: false, id: this._id() };
       for (let i = 0; i < n; i++) this._pad(s + i * (step || 9), o, grp);
     }
 
