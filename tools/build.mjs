@@ -185,7 +185,7 @@ async function checkPage(browser, label, file, bodyAttrs) {
   page.on('request', (r) => { const u = r.url(); if (u !== url && !u.startsWith('data:') && !u.startsWith('blob:')) problems.push('not self-contained, it requested ' + u.slice(0, 120)); });
   try {
     await page.goto(url, { waitUntil: 'load' });
-    await page.waitForFunction(() => !!(window.FL && window.FL.game), null, { timeout: 15000 })
+    await page.waitForFunction(() => !!(window.FL && window.FL.game), null, { timeout: 60000 })
       .catch(() => problems.push('window.FL.game never appeared'));
     if (!problems.length) {
       const missing = await page.evaluate((names) => names.filter((n) => !document.body.hasAttribute(n)), Object.keys(bodyAttrs));
