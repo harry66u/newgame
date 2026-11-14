@@ -95,12 +95,13 @@ in vec2 vUV; in vec4 vP; in vec4 vFog; in vec3 vSunV; in vec2 vS; out vec4 o;
 void main(){
   float q = 1.0 - dot(vUV, vUV);
   if (q <= 0.0) discard;
-  float den = mix(q * q, smoothstep(0.0, 0.35, q), vP.z);
+  float den = mix(q * (0.3 + 0.7 * q), smoothstep(0.0, 0.35, q), vP.z);
   float a = vP.x * den * clamp(vP.y, 0.0, 1.0);
   // a ball of snow under the morning sun: white where it faces the sun and along its thin
   // back-lit edge, the blue of the shade through its body. Higher in the plume catches more.
+  // The body sits well into the shade: with the sun side-on a brighter ball is white on white.
   float d = dot(vec3(vUV, sqrt(q)), vSunV);
-  float lit = clamp(d * 0.55 + 0.70 + vS.y * 0.28, 0.0, 1.0);
+  float lit = clamp(d * 0.62 + 0.48 + vS.y * 0.14, 0.2, 1.0);
   float rim = (1.0 - q) * max(-vSunV.z, 0.0) * 0.3;
   vec3 col = uAmb.rgb + uSunCol.rgb * min(lit + rim, 1.0);
   // chips of ice: the only thing here allowed over 1.0, so only they bloom
@@ -205,7 +206,7 @@ void main(){
        sideways, so a carve leaves its spray out where it was thrown) and relax toward the
        apparent wind, which streams them back. */
     const cdx = (sn * u + cs * vo * 0.6) * dt, cdz = (-cs * u + sn * vo * 0.6) * dt;
-    const wind = alive ? 4 + u * 0.14 : 0, wx = -hx * wind, wz = -hz * wind;
+    const wind = alive ? 5 + u * 0.2 : 0, wx = -hx * wind, wz = -hz * wind;
     for (let i = 0; i < n;) {
       const age = AGE[i] + dt;
       if (age >= LIFE[i]) {
@@ -241,11 +242,11 @@ void main(){
         accSpray -= 1;
         const side = k > 0.1 ? (carve > 0 ? -1 : 1) : (rnd() < 0.5 ? -1 : 1);       // thrown to the outside of the turn
         const along = 0.2 - 1.1 * rnd(), lat = side * (0.08 + 0.26 * rnd()), thr = 0.35 + 0.65 * rnd();
-        const out = side * (0.8 + 4.6 * pw * thr) * sp + (rnd() - 0.5) * 1.3, back = rnd() * 1.6;
-        const up = (0.5 + 5.4 * pw * thr * (0.5 + 0.5 * rnd())) * Math.min(sp, 1.25);
+        const out = side * (0.8 + 5.4 * pw * thr) * sp + (rnd() - 0.5) * 1.3, back = rnd() * 1.6;
+        const up = Math.min(7.5, (0.5 + 8.0 * pw * thr * (0.5 + 0.5 * rnd())) * Math.min(sp, 1.25));   // capped: the tail never stands taller than the skier
         const i = add(sk.x + hx * along + rx * lat, sk.z + hz * along + rz * lat, 0.05, rx * out - hx * back, up, rz * out - hz * back,
-          0.34 + 0.34 * rnd() + 0.22 * pw, 0.1 + 0.07 * rnd(), 0.28 + 0.36 * rnd() + 0.22 * pw, (0.36 + 0.36 * pw) * (qK < 1 ? 1.2 : 1), true);
-        GRAV[i] = 6.5;
+          0.36 + 0.34 * rnd() + 0.28 * pw, 0.1 + 0.07 * rnd(), 0.28 + 0.36 * rnd() + 0.24 * pw, (0.4 + 0.42 * pw) * (qK < 1 ? 1.2 : 1), true);
+        GRAV[i] = 8.5; DRAG[i] = 2.4;                    // thrown snow: up fast and back down, and soon left behind
         const pre = rnd() * dt;                          // spread births across the frame
         AGE[i] = pre; X[i] += VX[i] * pre; Z[i] += VZ[i] * pre; H[i] += VH[i] * pre;
       }
