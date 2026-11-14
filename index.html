@@ -100,12 +100,13 @@ body[data-mode="dead"] #over { opacity: 1; visibility: visible; transition: opac
 .touch .kb, body:not(.touch) .tc { display: none; }
 
 h1 {
-  margin: clamp(8px, 7vh, 84px) 0 0; font: italic 800 min(23vw, 25vh, 230px)/0.84 var(--display); letter-spacing: 0.005em;
+  margin: clamp(8px, 2vh, 20px) 0 0; font: italic 800 min(23vw, 25vh, 230px)/0.84 var(--display); letter-spacing: 0.005em;
   text-transform: uppercase; text-shadow: var(--lift-lg);
 }
-#runs { display: flex; gap: 0.55em; margin-top: clamp(10px, 2.4vh, 24px); font-size: clamp(17px, 3vmin, 25px); }
+/* the three signs every skier knows, as the eyebrow over the name: the runs get harder in this order */
+#runs { display: flex; gap: 0.55em; margin-top: clamp(4px, 4.5vh, 56px); font-size: clamp(17px, 3vmin, 25px); }
 /* The name owns the sky; everything to read is navy ink on the snow at the skier's feet. */
-.start { display: flex; flex-direction: column; align-items: center; margin-top: auto; margin-bottom: clamp(0px, 4.5vh, 52px); color: var(--ink); text-shadow: var(--halo); }
+.start { display: flex; flex-direction: column; align-items: center; margin-top: auto; margin-bottom: clamp(0px, 3vh, 40px); color: var(--ink); text-shadow: var(--halo); }
 .how { font: 600 clamp(18px, 3vmin, 24px)/1.3 var(--body); }
 .key {
   display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; min-width: 1.55em; height: 1.55em; margin: 0 0.1em; padding: 0 0.25em;
@@ -117,7 +118,8 @@ h1 {
 .go { font: 600 clamp(20px, 3.4vmin, 28px)/1.1 var(--body); animation: breathe 2.6s ease-in-out infinite; }
 .start .go { margin-top: clamp(10px, 2.8vh, 28px) !important; }
 @keyframes breathe { 50% { opacity: 0.55; } }
-@media (max-height: 480px) { .start { margin-bottom: 0; } .more { max-width: none; } }
+@media (min-width: 700px) { .more { max-width: none; } }
+@media (max-height: 480px) { .start { margin-bottom: 0; } }
 
 #reach {
   display: flex; align-items: center; gap: 0.5em; margin-top: clamp(14px, 12vh, 130px) !important;
@@ -128,12 +130,14 @@ h1 {
 #record { margin-top: clamp(6px, 1.4vh, 14px) !important; font: 600 clamp(20px, 3.4vmin, 28px)/1.2 var(--body); text-shadow: var(--lift); font-variant-numeric: tabular-nums; }
 #record.new { color: var(--sun); }
 #dist { margin-top: 2px !important; font: 500 clamp(16px, 2.5vmin, 20px)/1.3 var(--body); text-shadow: var(--lift); font-variant-numeric: tabular-nums; }
-/* the scene is drained to a cold blue here, pale where the snow was: white needs the heavier shadow */
+/* The scene is drained to a cold blue here but stays pale where the snow was, so the foot of the
+   screen is shaded a little further for the white prompt. It fades in and out with the result. */
+#over::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 36%; z-index: -1; background: linear-gradient(rgba(var(--shade), 0), rgba(var(--shade), 0.5)); }
 #over .go { margin-top: auto !important; margin-bottom: clamp(10px, 6.5vh, 70px) !important; text-shadow: var(--lift-hi); }
 
 /* portrait phones: the sky is tall, so the name stacks and fills it */
 @media (orientation: portrait) and (max-width: 640px) {
-  h1 { font-size: min(42vw, 19vh); margin-top: clamp(8px, 6vh, 64px); }
+  h1 { font-size: min(42vw, 19vh); }
   h1 span { display: block; }
   #reach { margin-top: 16vh !important; }
 }
@@ -173,8 +177,8 @@ h1 {
 </div>
 
 <section id="title" class="panel">
-  <h1><span>Fall</span> <span>Line</span></h1>
   <div id="runs" aria-hidden="true"></div>
+  <h1><span>Fall</span> <span>Line</span></h1>
   <div class="start">
     <p class="how"><span class="kb">Steer with <span class="key" aria-label="left arrow"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M13 8H3M7 4 3 8l4 4"/></svg></span><span class="key" aria-label="right arrow"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4"/></svg></span> or <span class="key">A</span><span class="key">D</span></span><span class="tc">Hold the left or right side to steer</span></p>
     <p class="more">Ice is speed. Ride the ice and cut close to the trees to build your multiplier.</p>

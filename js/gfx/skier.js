@@ -157,7 +157,7 @@
     const ul = 1 / Math.hypot(ux, uy, uz); ux *= ul; uy *= ul; uz *= ul;
     const cx = scx + sx * 0.03 + ux * 0.15, cy = scy + sy * 0.03 + uy * 0.15, cz = scz + sz * 0.03 + uz * 0.15;
     bone(20, cx - ux * 0.125, cy - uy * 0.125, cz - uz * 0.125, cx + ux * 0.125, cy + uy * 0.125, cz + uz * 0.125, 0.12, 0.132, tx, ty, 0, COL.helmet, 0.8);
-    bone(21, cx, cy, cz + 0.012, cx + ux * 0.07, cy + uy * 0.07, cz + uz * 0.07 + 0.012, 0.128, 0.14, tx, ty, 0, COL.goggles, 0.9);
+    bone(21, cx - ux * 0.045, cy - uy * 0.045, cz - uz * 0.045 + 0.012, cx + ux * 0.035, cy + uy * 0.035, cz + uz * 0.035 + 0.012, 0.132, 0.145, tx, ty, 0, COL.goggles, 0.94);
   }
 
   // ---- animation state --------------------------------------------------------------------------
