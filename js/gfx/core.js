@@ -171,7 +171,7 @@ void main(){
       this.cam = { x: 0, y: 0, z: 0 };
       this.camR = [1, 0, 0]; this.camU = [0, 1, 0]; this.camF = [0, 0, -1];
       this.proj = M4.create(); this.view = M4.create(); this.vp = M4.create(); this.inv = M4.create();
-      this.aspect = 1; this.tanFov = 1;
+      this.aspect = 1; this.tanFov = 1; this.tall = 0; this.camH = 2.9;
       // the skier in world space, refreshed every frame before any layer runs
       this.skier = { x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, yaw: 0, cs: 1, sn: 0, sl: 0, bk: 0 };
       this.mood = Look.newMood();
@@ -383,8 +383,11 @@ void main(){
     _camera(v) {
       const tr = v.track, c = v.cam, cv = this.canvas;
       const aspect = this.aspect = cv.width / cv.height;
-      const tall = clamp((1.25 - aspect) / 0.75, 0, 1);          // portrait screens sit higher and further back
-      const back = c.back + tall * 3.2, camH = 2.9 + tall * 2.1;
+      /* Portrait screens sit higher and further back and look down more steeply: on a tall, narrow
+         screen that is what gives the piste AHEAD of the skier a useful share of the height
+         (about a third of it, instead of a fifth with the landscape rig). */
+      const tall = this.tall = clamp((1.25 - aspect) / 0.75, 0, 1);
+      const back = c.back + tall * 3.8, camH = this.camH = 2.9 + tall * 4.6;
       tr.frameAt(v.s - back, FA);
       const ahead = 15 + v.u * 0.13;
       tr.frameAt(v.s + ahead, FB);
@@ -403,7 +406,7 @@ void main(){
       const ux = rx * Math.sin(roll), uy = Math.cos(roll), uz = rz * Math.sin(roll);
       M4.lookDir(this.view, dx, dy, dz, ux, uy, uz);
       const fovDeg = c.fov + c.kick * 8;
-      const fov = 2 * Math.atan(Math.tan((fovDeg * Math.PI) / 360) * Math.pow(clamp(1.5 / aspect, 1, 2.2), 0.8));
+      const fov = 2 * Math.atan(Math.tan((fovDeg * Math.PI) / 360) * Math.pow(clamp(1.5 / aspect, 1, 1.7), 0.8));
       this.tanFov = Math.tan(fov / 2);
       M4.perspective(this.proj, fov, aspect, 0.3, 1400);
       M4.mul(this.vp, this.proj, this.view);
