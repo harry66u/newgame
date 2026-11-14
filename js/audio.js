@@ -457,7 +457,7 @@
       // wind: rises with speed and boost, and is all that is left in the air
       let wg = 0, wf = 320;
       if (run) {
-        wg = (0.03 + 0.15 * sp * sp) * (1 + 0.4 * b) * (1 + air * (0.5 + 0.3 * clamp(+p.air || 0, 0, 1)));
+        wg = (0.03 + 0.12 * sp * sp) * (1 + 0.4 * b) * (1 + air * (0.5 + 0.3 * clamp(+p.air || 0, 0, 1)));
         wf = 380 + 900 * sp + 450 * b + 150 * air;
       } else if (mode !== 'pause') wg = 0.035;
       this._to(10, this.wind.g.gain, wg, 0.1);

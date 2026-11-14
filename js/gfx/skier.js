@@ -244,7 +244,9 @@
     let k = v.calm ? 0.35 : 0.6;
     const sp = Math.hypot(sk.vx, sk.vz) * k;
     if (sp > 24) k *= 24 / sp;
-    const bvx = sk.vx * k, bvz = sk.vz * k, side = v.vo < 0 ? -1 : 1;
+    // ...mostly straight down the piste, so the tumble stays in front of the camera
+    const lat = (sk.vx * sk.cs + sk.vz * sk.sn) * 0.6;
+    const bvx = (sk.vx - sk.cs * lat) * k, bvz = (sk.vz - sk.sn * lat) * k, side = v.vo < 0 ? -1 : 1;
     BD[0] = Ux * 0.6; BD[1] = Uy * 0.6; BD[2] = Uz * 0.6;
     BD[3] = bvx + Rx * side * 1.5 * soft; BD[4] = sk.vy * 0.3 + 4.5 * soft; BD[5] = bvz + Rz * side * 1.5 * soft;
     BD[6] = (-Rx * 6.5 + Fx * side * 1.6) * soft; BD[7] = (-Ry * 6.5 + Fy * side * 1.6) * soft; BD[8] = (-Rz * 6.5 + Fz * side * 1.6) * soft;
@@ -329,7 +331,7 @@ void main(){ o = vec4(flFog(flLight(vCol, normalize(vN), 1.0), vW), 1.0); }`;
       const dt = clamp(v.dt, 0, 0.05);
       clock += dt; count = 0; scale = 1;
       if (pend) { pend = false; if (!v.skierOn) startCrash(R, v); }
-      if (crashOn) { stepCrash(dt); return; }
+      if (crashOn) { stepCrash(dt * 1.5); return; }      // the run ends in slow motion: keep the tumble lively through it
       if (!v.skierOn) return;
       animate(v, dt);
       build(R, v);
