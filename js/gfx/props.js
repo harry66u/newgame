@@ -21,7 +21,7 @@
      pushes its corners about per instance, so one mesh gives every chunk its own facets. The
      foot ring only ever grows: at ground level the hit box is always covered. */
   const ROCK = (() => {
-    const rings = [[-0.08, 1.0], [0.5, 1.04], [0.86, 0.7]], v = [];
+    const rings = [[-0.08, 1.0], [0.5, 1.04], [0.87, 0.78]], v = [];
     const pt = (r, k) => {
       k &= 7;
       const a = (k * Math.PI) / 4, m = rings[r][1] * (k & 1 ? 0.86 * Math.SQRT2 : 1);
@@ -153,9 +153,9 @@ void main(){
   // a dark lip, then a bright bevel: the cut edge of a strip let into the snow
   float lip = 1.0 - smoothstep(0.06, 0.06 + aa, ed);
   float bev = (1.0 - smoothstep(0.12, 0.12 + aa, ed)) * (1.0 - lip);
-  alb = mix(alb, vec3(0.80, 0.98, 1.0), bev * 0.9);
-  alb = mix(alb, uDeep * 0.55, lip);
-  alb = mix(alb, vec3(0.62, 0.74, 0.86), dull * 0.72);                // ridden: scraped dull
+  alb = mix(alb, vec3(0.62, 0.74, 0.86), dull * 0.7);                 // ridden: scraped dull, but still a cut strip
+  alb = mix(alb, vec3(0.80, 0.98, 1.0), bev * (0.9 - 0.5 * dull));
+  alb = mix(alb, uDeep * 0.55, lip * (1.0 - 0.35 * dull));
   vec3 col = flFog(flLight(alb, vec3(0.0, 1.0, 0.0), 1.0), vW);
   // sun glints: three at a time, each flaring at one spot then moving on. They grow with
   // distance so a far strip still winks.

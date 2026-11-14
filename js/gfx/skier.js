@@ -101,7 +101,7 @@
     const pr = lean * 0.7, pxx = Math.cos(pr), pxy = -Math.sin(pr);
     // spine: pitched forward, rolled much less than the legs so the shoulders stay nearer level
     const th = P[2] - tb + 0.06 * ac + comp * 1.3 + br * 0.015 + wFl * 0.3 * Math.sin(t * 6.3);
-    const rho = lean * 0.35, cth = Math.cos(th);
+    const rho = lean * 0.45, cth = Math.cos(th);
     const sx = Math.sin(rho) * cth, sy = Math.cos(rho) * cth, sz = Math.sin(th);
     let tx = Math.cos(rho), ty = -Math.sin(rho), tz = c * 0.22;             // shoulder line, turned to face down the hill
     const tl = 1 / Math.hypot(tx, ty, tz); tx *= tl; ty *= tl; tz *= tl;
@@ -203,12 +203,12 @@
 
   // ---- the yard sale ----------------------------------------------------------------------------
   // The body tumbles on as one flailing figure; skis and poles come off and spin away on their own.
-  let pend = false, crashOn = false, crashT = 0, crashN = 0, gY0 = 0, gGX = 0, gGZ = 0, flailK = 1;
+  let crashOn = false, crashDone = false, crashT = 0, crashN = 0, gY0 = 0, gGX = 0, gGZ = 0, flailK = 1;
   const BD = new Float32Array(18);                     // body: centre, velocity, spin, basis (right, up, forward)
   const GR = new Float32Array(4 * 9);                  // loose gear, per group: position, velocity, spin
   const LP = new Float32Array(6 * ST);                 // gear parts relative to their group
   const GI = new Uint8Array([0, 0, 1, 1, 2, 3]), G0 = new Uint8Array([0, 2, 4, 5]);
-  const G = 15;
+  const G = 15, TS = 1.5;                              // the run ends in slow motion: the tumble runs TS times livelier
 
   let rkx = 0, rky = 1, rkz = 0, rc = 1, rs = 0;
   function setRot(wx, wy, wz, dt) {
@@ -240,15 +240,11 @@
     build(R, v);                                        // where everything is at the moment of impact
     gGX = gradX; gGZ = gradZ; gY0 = v.hAbove < 30 ? -v.hAbove : -1e4;
     crashN++; crashOn = true; crashT = 0; flailK = v.calm ? 0.4 : 1;
-    // they hit something: most of the speed is gone, the rest carries them on down the hill
-    let k = v.calm ? 0.35 : 0.6;
-    const sp = Math.hypot(sk.vx, sk.vz) * k;
-    if (sp > 24) k *= 24 / sp;
-    // ...mostly straight down the piste, so the tumble stays in front of the camera
-    const lat = (sk.vx * sk.cs + sk.vz * sk.sn) * 0.6;
-    const bvx = (sk.vx - sk.cs * lat) * k, bvz = (sk.vz - sk.sn * lat) * k, side = v.vo < 0 ? -1 : 1;
+    // After the end the simulation lets the skier's point (and the camera on it) drift on down
+    // the track, slowing: everything carries that same speed, so the tumble stays in shot.
+    const k = v.u / TS, bvx = sk.sn * k, bvz = -sk.cs * k, side = v.vo < 0 ? -1 : 1;
     BD[0] = Ux * 0.6; BD[1] = Uy * 0.6; BD[2] = Uz * 0.6;
-    BD[3] = bvx + Rx * side * 1.5 * soft; BD[4] = sk.vy * 0.3 + 4.5 * soft; BD[5] = bvz + Rz * side * 1.5 * soft;
+    BD[3] = bvx + Rx * side * 2.2 * soft; BD[4] = 6.5 * soft; BD[5] = bvz + Rz * side * 2.2 * soft;
     BD[6] = (-Rx * 6.5 + Fx * side * 1.6) * soft; BD[7] = (-Ry * 6.5 + Fy * side * 1.6) * soft; BD[8] = (-Rz * 6.5 + Fz * side * 1.6) * soft;
     BD[9] = Rx; BD[10] = Ry; BD[11] = Rz; BD[12] = Ux; BD[13] = Uy; BD[14] = Uz; BD[15] = Fx; BD[16] = Fy; BD[17] = Fz;
     LP.set(data.subarray(0, 6 * ST));
@@ -256,8 +252,8 @@
       const o = g * 9, j = G0[g] * ST, sgn = g & 1 ? 1 : -1;
       const r1 = Look.hash(g + crashN * 7.3, 1.7), r2 = Look.hash(g * 3.1, crashN + 4.1), r3 = Look.hash(g * 5.7 + 2.2, crashN * 1.3);
       GR[o] = data[j]; GR[o + 1] = data[j + 1]; GR[o + 2] = data[j + 2];
-      const lat = sgn * (2.5 + 4 * r2) * soft, f = 0.8 + 0.5 * r1;
-      GR[o + 3] = bvx * f + Rx * lat; GR[o + 4] = (4 + 4 * r3) * soft; GR[o + 5] = bvz * f + Rz * lat;
+      const lat = sgn * (2.5 + 4 * r2) * soft, f = 0.75 + 0.45 * r1;
+      GR[o + 3] = bvx * f + Rx * lat; GR[o + 4] = (5 + 4 * r3) * soft; GR[o + 5] = bvz * f + Rz * lat;
       const w = (8 + 8 * r1) * (v.calm ? 0.3 : 1), a = r1 - 0.5, b = r2 - 0.5, c = r3 - 0.5, n = 1 / (Math.hypot(a, b, c) || 1);
       GR[o + 6] = (Rx * a + Ux * b + Fx * c) * n * w; GR[o + 7] = (Ry * a + Uy * b + Fy * c) * n * w; GR[o + 8] = (Rz * a + Uz * b + Fz * c) * n * w;
     }
@@ -266,9 +262,9 @@
 
   function stepCrash(dt) {
     crashT += dt;
-    if (crashT > 1.75) { crashOn = false; return; }
+    if (crashT > 1.75) { crashOn = false; crashDone = true; return; }
     // the body: ballistic, bouncing down the slope, shedding speed and spin each time it lands
-    const drag = Math.exp(-1.2 * dt);
+    const drag = Math.exp(-2.6 / TS * dt);
     BD[3] *= drag; BD[5] *= drag; BD[4] -= G * dt;
     BD[0] += BD[3] * dt; BD[1] += BD[4] * dt; BD[2] += BD[5] * dt;
     if (hit(BD, 0, 0.36, 0.3, 0.85)) { const k = Math.exp(-3 * dt); BD[6] *= k; BD[7] *= k; BD[8] *= k; }
@@ -280,7 +276,7 @@
     pose(0, 0, flailK, 0, 0, 0, false, clock);
     for (let g = 0; g < 4; g++) {
       const o = g * 9;
-      GR[o + 4] -= G * dt;
+      GR[o + 3] *= drag; GR[o + 5] *= drag; GR[o + 4] -= G * dt;
       GR[o] += GR[o + 3] * dt; GR[o + 1] += GR[o + 4] * dt; GR[o + 2] += GR[o + 5] * dt;
       if (hit(GR, o, 0.06, 0.4, 0.75)) { const k = Math.exp(-5 * dt); GR[o + 6] *= k; GR[o + 7] *= k; GR[o + 8] *= k; }
       setRot(GR[o + 6], GR[o + 7], GR[o + 8], dt);
@@ -330,8 +326,9 @@ void main(){ o = vec4(flFog(flLight(vCol, normalize(vN), 1.0), vW), 1.0); }`;
     prepare(R, v) {
       const dt = clamp(v.dt, 0, 0.05);
       clock += dt; count = 0; scale = 1;
-      if (pend) { pend = false; if (!v.skierOn) startCrash(R, v); }
-      if (crashOn) { stepCrash(dt * 1.5); return; }      // the run ends in slow motion: keep the tumble lively through it
+      if (v.skierOn) crashDone = false;
+      else if (!crashOn && !crashDone && v.cause === 'crash') startCrash(R, v);   // from the state, not the event: R.skier is fresh here
+      if (crashOn) { stepCrash(dt * TS); return; }
       if (!v.skierOn) return;
       animate(v, dt);
       build(R, v);
@@ -352,10 +349,10 @@ void main(){ o = vec4(flFog(flLight(vCol, normalize(vN), 1.0), vW), 1.0); }`;
       if (e.type === 'land') {
         // a critically damped kick: peaks at 1/w and is back up in about 0.3 s
         SV[5] += clamp(e.v / 20, 0.25, 1) * 0.2 * 14 * Math.E;
-      } else if (e.type === 'dead' && e.cause === 'crash') pend = true;   // posed next frame, when R.skier is where they stopped
+      }
     },
     reset() {
-      fresh = true; pend = false; crashOn = false; count = 0; scale = 1;
+      fresh = true; crashOn = false; crashDone = false; count = 0; scale = 1;
     },
   });
 })(typeof window !== 'undefined' ? window : globalThis);
