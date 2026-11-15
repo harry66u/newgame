@@ -1,0 +1,6 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "installCommand": "",
+  "buildCommand": "node tools/build.mjs && cp dist/fall-line.html dist/index.html",
+  "outputDirectory": "dist"
+}
