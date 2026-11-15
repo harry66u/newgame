@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#3f74d2">
+<title>Fall Line</title>
+<style>
+/* Layout: one full-bleed canvas with type laid straight on the scene, no boxes. The voice is piste
+   signage and race bibs: Barlow Condensed (heavy italic for numerals and the name, semibold caps for
+   sign-like labels) and Barlow Semi Condensed for sentences. White type carries a soft navy shadow so
+   it holds over azure, peach and dusk skies alike; type that sits on snow is navy ink instead. */
+@font-face { font-family: 'Barlow Condensed'; font-style: italic; font-weight: 800; font-display: swap; src: url('fonts/barlow-condensed-latin-800-italic.woff2') format('woff2'); }
+@font-face { font-family: 'Barlow Condensed'; font-style: normal; font-weight: 600; font-display: swap; src: url('fonts/barlow-condensed-latin-600-normal.woff2') format('woff2'); }
+@font-face { font-family: 'Barlow Semi Condensed'; font-style: normal; font-weight: 500; font-display: swap; src: url('fonts/barlow-semi-condensed-latin-500-normal.woff2') format('woff2'); }
+@font-face { font-family: 'Barlow Semi Condensed'; font-style: normal; font-weight: 600; font-display: swap; src: url('fonts/barlow-semi-condensed-latin-600-normal.woff2') format('woff2'); }
+:root {
+  color-scheme: light;
+  --sky: #3f74d2;                        /* what shows before the mountain does */
+  --snow: #ffffff;                       /* type on sky */
+  --ink: #10244f;                        /* type on snow */
+  --shade: 9, 28, 72;                    /* the shadow under white type, as r, g, b */
+  --sun: #ffd45e;                        /* reward: the multiplier, a new best */
+  --ice: #3fcdf0;                        /* the ice strips */
+  --display: 'Barlow Condensed', 'DIN Condensed', 'Roboto Condensed', 'Arial Narrow', 'Helvetica Neue', Arial, sans-serif;
+  --body: 'Barlow Semi Condensed', 'Avenir Next Condensed', 'Roboto Condensed', 'Segoe UI', system-ui, sans-serif;
+  --lift: 0 1px 2px rgba(var(--shade), 0.6), 0 2px 12px rgba(var(--shade), 0.5);
+  --lift-lg: 0 2px 4px rgba(var(--shade), 0.42), 0 6px 30px rgba(var(--shade), 0.42);
+  --lift-hi: 0 1px 2px rgba(var(--shade), 0.85), 0 2px 10px rgba(var(--shade), 0.7), 0 0 26px rgba(var(--shade), 0.45);   /* for amber, and for white over pale ground */
+  --halo: 0 0 2px rgba(255, 255, 255, 0.9), 0 0 14px rgba(255, 255, 255, 0.85);                                         /* under navy ink */
+  --edge-t: max(12px, env(safe-area-inset-top, 0px));
+  --edge-b: max(16px, env(safe-area-inset-bottom, 0px));
+  --edge-l: max(16px, env(safe-area-inset-left, 0px));
+  --edge-r: max(16px, env(safe-area-inset-right, 0px));
+}
+html, body { height: 100%; margin: 0; background: var(--sky); }
+body {
+  overflow: hidden; overscroll-behavior: none; touch-action: none;
+  color: var(--snow); font-family: var(--body); font-weight: 500; font-size: 16px; font-synthesis: none;
+  -webkit-text-size-adjust: 100%; text-size-adjust: 100%;
+  -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent;
+}
+#gl { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; outline: none; }
+[hidden] { display: none !important; }
+
+/* Piste rating symbols, drawn in js/hud.js. The white keyline is the sign plate they would sit on. */
+.sym { display: block; height: 1em; overflow: visible; stroke: #fff; stroke-width: 2.2; stroke-linejoin: round; paint-order: stroke; filter: drop-shadow(0 1px 2px rgba(var(--shade), 0.45)); }
+
+/* ---- in a run: score, multiplier, call-outs stacked top-centre; best and mute in the corners ---- */
+#hud { position: fixed; inset: 0; pointer-events: none; }
+#top { position: absolute; top: var(--edge-t); left: var(--edge-l); right: var(--edge-r); display: flex; flex-direction: column; align-items: center; }
+#score {
+  font: italic 800 clamp(48px, 9.5vmin, 88px)/0.92 var(--display); white-space: nowrap; text-shadow: var(--lift-lg);
+  contain: layout style; will-change: transform;           /* its own layer: a digit changing repaints only this */
+}
+#score span { display: inline-block; width: 0.5em; text-align: center; }
+#score .sep { width: 0.2em; }
+#flow { display: flex; flex-direction: column; align-items: center; margin-top: clamp(1px, 0.5vmin, 5px); color: var(--sun); opacity: 0; transition: opacity 0.2s; }
+#flow.on { opacity: 1; }
+#mult { display: block; font: italic 800 clamp(28px, 5.2vmin, 46px)/1 var(--display); text-shadow: var(--lift-hi); }
+#flow.max #mult::after { content: 'max'; margin-left: 0.3em; font: normal 600 0.5em/1 var(--display); letter-spacing: 0.1em; text-transform: uppercase; vertical-align: 0.42em; }
+#flowbar { display: block; width: clamp(56px, 9vmin, 84px); height: 3px; margin-top: 4px; border-radius: 2px; overflow: hidden; background: rgba(255, 255, 255, 0.42); box-shadow: 0 1px 6px rgba(var(--shade), 0.5); }
+#flowfill { display: block; height: 100%; border-radius: 2px; background: currentColor; transform-origin: 50% 50%; will-change: transform; }
+#call {
+  display: flex; align-items: center; gap: 0.45em; margin-top: clamp(8px, 1.6vmin, 14px); white-space: nowrap; opacity: 0;
+  font: 600 clamp(18px, 3.2vmin, 28px)/1.1 var(--display); letter-spacing: 0.09em; text-transform: uppercase; text-shadow: var(--lift);
+}
+#calltxt { margin-right: -0.09em; }
+#callsym:empty, #call:not(.wave) #callsym { display: none; }
+#call.wave { font-size: clamp(23px, 4.4vmin, 38px); }
+#call.best { color: var(--sun); text-shadow: var(--lift-hi); }
+/* 'Ice' wears a chip of the strip itself */
+#call.boost #calltxt::before { content: ''; display: inline-block; width: 0.95em; height: 0.5em; margin-right: 0.5em; background: var(--ice); border: 1.5px solid #fff; border-radius: 1px; transform: skewX(-20deg); box-shadow: 0 1px 6px rgba(var(--shade), 0.45); }
+#best {
+  position: absolute; top: calc(var(--edge-t) + 10px); left: var(--edge-l);
+  font: 600 clamp(15px, 2.3vmin, 18px)/1 var(--display); letter-spacing: 0.09em; text-transform: uppercase; text-shadow: var(--lift);
+  font-variant-numeric: tabular-nums;
+}
+#best.new { color: var(--sun); text-shadow: var(--lift-hi); }
+#mute {
+  position: absolute; top: calc(var(--edge-t) - 4px); right: max(6px, env(safe-area-inset-right, 0px)); width: 44px; height: 44px; padding: 10px; margin: 0;
+  pointer-events: auto; cursor: pointer; background: none; border: 0; border-radius: 50%; color: var(--snow);
+}
+#mute:focus-visible { outline: 2px solid #fff; outline-offset: -3px; background: rgba(var(--shade), 0.5); }
+#mute svg { display: block; width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 1px 3px rgba(var(--shade), 0.6)); }
+#mute .x { display: none; }
+#mute.off .w { display: none; }
+#mute.off .x { display: inline; }
+body:not([data-mode="run"]) #top, body[data-mode="dead"] #best { visibility: hidden; }
+
+/* ---- title and result ---- */
+.panel {
+  position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; text-align: center;
+  padding: var(--edge-t) var(--edge-r) var(--edge-b) var(--edge-l); box-sizing: border-box;
+  pointer-events: none; opacity: 0; visibility: hidden;      /* no transition out: a restart clears it at once */
+}
+.panel p { margin: 0; }
+body[data-mode="title"] #title { opacity: 1; visibility: visible; }
+body[data-mode="dead"] #over { opacity: 1; visibility: visible; transition: opacity 0.28s 0.4s, visibility 0s 0.4s; }
+.touch .kb, body:not(.touch) .tc { display: none; }
+
+h1 {
+  margin: clamp(8px, 2vh, 20px) 0 0; font: italic 800 min(23vw, 25vh, 230px)/0.84 var(--display); letter-spacing: 0.005em;
+  text-transform: uppercase; text-shadow: var(--lift-lg);
+}
+/* the three signs every skier knows, as the eyebrow over the name: the runs get harder in this order */
+#runs { display: flex; gap: 0.55em; margin-top: clamp(4px, 4.5vh, 56px); font-size: clamp(17px, 3vmin, 25px); }
+/* The name owns the sky; everything to read is navy ink on the snow at the skier's feet. */
+.start { display: flex; flex-direction: column; align-items: center; margin-top: auto; margin-bottom: clamp(0px, 3vh, 40px); color: var(--ink); text-shadow: var(--halo); }
+.how { font: 600 clamp(18px, 3vmin, 24px)/1.3 var(--body); }
+.key {
+  display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; min-width: 1.55em; height: 1.55em; margin: 0 0.1em; padding: 0 0.25em;
+  border: 1.5px solid currentColor; border-radius: 0.3em; background: rgba(255, 255, 255, 0.6);
+  font-size: 0.82em; line-height: 1; text-shadow: none; vertical-align: 0.06em;
+}
+.key svg { display: block; width: 0.95em; height: 0.95em; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.more { margin-top: 4px !important; max-width: 25em; font: 500 clamp(15px, 2.4vmin, 19px)/1.35 var(--body); text-wrap: balance; }
+.go { font: 600 clamp(20px, 3.4vmin, 28px)/1.1 var(--body); animation: breathe 2.6s ease-in-out infinite; }
+.start .go { margin-top: clamp(10px, 2.8vh, 28px) !important; }
+@keyframes breathe { 50% { opacity: 0.55; } }
+@media (min-width: 700px) { .more { max-width: none; } }
+@media (max-height: 480px) { .start { margin-bottom: 0; } }
+
+#reach {
+  display: flex; align-items: center; gap: 0.5em; margin-top: clamp(14px, 12vh, 130px) !important;
+  font: 600 clamp(17px, 2.8vmin, 24px)/1 var(--display); letter-spacing: 0.1em; text-transform: uppercase; text-shadow: var(--lift);
+}
+#final { margin-top: clamp(4px, 1.4vh, 14px) !important; font: italic 800 clamp(84px, 24vmin, 200px)/0.9 var(--display); text-shadow: var(--lift-lg); font-variant-numeric: tabular-nums; }
+#final.long { font-size: clamp(60px, 17vmin, 150px); }
+#record { margin-top: clamp(6px, 1.4vh, 14px) !important; font: 600 clamp(20px, 3.4vmin, 28px)/1.2 var(--body); text-shadow: var(--lift); font-variant-numeric: tabular-nums; }
+#record.new { color: var(--sun); }
+#dist { margin-top: 2px !important; font: 500 clamp(16px, 2.5vmin, 20px)/1.3 var(--body); text-shadow: var(--lift); font-variant-numeric: tabular-nums; }
+/* The scene is drained to a cold blue here but stays pale where the snow was, so the foot of the
+   screen is shaded a little further for the white prompt. It fades in and out with the result. */
+#over::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 36%; z-index: -1; background: linear-gradient(rgba(var(--shade), 0), rgba(var(--shade), 0.5)); }
+#over .go { margin-top: auto !important; margin-bottom: clamp(10px, 6.5vh, 70px) !important; text-shadow: var(--lift-hi); }
+
+/* portrait phones: the sky is tall, so the name stacks and fills it */
+@media (orientation: portrait) and (max-width: 640px) {
+  h1 { font-size: min(42vw, 19vh); }
+  h1 span { display: block; }
+  #reach { margin-top: 16vh !important; }
+}
+
+/* ---- pause, and the message when the game cannot start ---- */
+#pause, #fail {
+  position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+  padding: var(--edge-t) var(--edge-r) var(--edge-b) var(--edge-l); box-sizing: border-box; text-align: center;
+}
+#pause { background: rgba(14, 34, 82, 0.5); pointer-events: none; }
+@media (max-width: 480px) { body[data-mode="run"] #best { top: calc(var(--edge-t) + 58px); } }
+#fail { background: linear-gradient(180deg, #2a5fc4 0%, #6ea5e8 72%, #cfe4fa 100%); }
+#pause strong { font: italic 800 clamp(48px, 12vmin, 100px)/0.9 var(--display); text-transform: uppercase; text-shadow: var(--lift-lg); }
+#fail strong { font: 600 clamp(22px, 4vmin, 30px)/1.15 var(--body); text-shadow: var(--lift); }
+#pause span, #fail span { max-width: 26em; font: 500 clamp(16px, 2.6vmin, 20px)/1.35 var(--body); text-wrap: balance; text-shadow: var(--lift); }
+#pause span { font-weight: 600; }
+
+@media (prefers-reduced-motion: reduce) {
+  .go { animation: none; }
+  #flow { transition: none; }
+  body[data-mode="dead"] #over { transition: opacity 0s 0.4s, visibility 0s 0.4s; }
+}
+</style>
+</head>
+<body data-mode="title">
+<canvas id="gl" aria-label="Fall Line game view"></canvas>
+
+<div id="hud">
+  <div id="top" aria-hidden="true">
+    <div id="score"></div>
+    <div id="flow"><span id="mult">×1</span><i id="flowbar"><b id="flowfill"></b></i></div>
+    <div id="call"><span id="callsym"></span><span id="calltxt"></span></div>
+  </div>
+  <div id="best"></div>
+  <button id="mute" type="button" aria-label="Mute sound" aria-pressed="false" title="Sound (M)">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5v5h3.5L12 18V6L7.5 9.5H4z"/><path class="w" d="M15.5 9a4.2 4.2 0 0 1 0 6M18 6.5a7.8 7.8 0 0 1 0 11"/><path class="x" d="M16 9.5l5 5M21 9.5l-5 5"/></svg>
+  </button>
+</div>
+
+<section id="title" class="panel">
+  <div id="runs" aria-hidden="true"></div>
+  <h1><span>Fall</span> <span>Line</span></h1>
+  <div class="start">
+    <p class="how"><span class="kb">Steer with <span class="key" aria-label="left arrow"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M13 8H3M7 4 3 8l4 4"/></svg></span><span class="key" aria-label="right arrow"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4"/></svg></span> or <span class="key">A</span><span class="key">D</span></span><span class="tc">Hold the left or right side to steer</span></p>
+    <p class="more">Ice is speed. Ride the ice and cut close to the trees to build your multiplier.</p>
+    <p class="go"><span class="kb">Press any key</span><span class="tc">Tap to start</span></p>
+  </div>
+</section>
+
+<section id="over" class="panel" aria-live="polite">
+  <p id="reach"><span id="reachsym" aria-hidden="true"></span><span id="reachtxt"></span></p>
+  <p id="final">0</p>
+  <p id="record"></p>
+  <p id="dist"></p>
+  <p class="go"><span class="kb">Press any key to go again</span><span class="tc">Tap to go again</span></p>
+</section>
+
+<div id="pause" hidden><strong>Paused</strong><span class="kb">Press any key to carry on</span><span class="tc">Tap to carry on</span></div>
+<div id="fail" hidden><strong>Fall Line can't start here</strong><span>It needs WebGL 2, which this browser or device has turned off. Try a current version of Chrome, Edge, Firefox or Safari.</span></div>
+
+<script src="js/util.js"></script>
+<script src="js/look.js"></script>
+<script src="js/track.js"></script>
+<script src="js/sim.js"></script>
+<script src="js/gfx/core.js"></script>
+<script src="js/gfx/piste.js"></script>
+<script src="js/gfx/stub.js"></script>
+<script src="js/gfx/sky.js"></script>
+<script src="js/gfx/scenery.js"></script>
+<script src="js/gfx/flora.js"></script>
+<script src="js/gfx/props.js"></script>
+<script src="js/gfx/markers.js"></script>
+<script src="js/gfx/skier.js"></script>
+<script src="js/gfx/snowfx.js"></script>
+<script src="js/gfx/tracks.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/hud.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>

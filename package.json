@@ -1,0 +1,17 @@
+{
+  "name": "fall-line",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A browser ski game: one endless run down a generated mountain.",
+  "license": "UNLICENSED",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node tools/serve.mjs",
+    "build": "node tools/build.mjs",
+    "check": "node tools/build.mjs --check",
+    "test": "node --test tests/",
+    "fair": "node tests/run.js fair 4 15000"
+  }
+}
