@@ -273,7 +273,7 @@
        move of d, at the fastest speed possible here — time to notice and decide, plus a
        comfortable margin on the move itself. */
     _gapFor(d, I) {
-      return this.uMax * (lerp(0.62, 0.28, I) + 1.3 * C.tMove(d));
+      return this.uMax * (lerp(0.42, 0.22, I) + 1.3 * C.tMove(d));
     }
 
     // Where the ball's centre can pass a row of blocks ([o, hx] pairs) on a road of half-width W.
@@ -439,12 +439,12 @@
     _planWave() {
       const w = this.wave, r = this.rng, q = this.queue;
       if (w === 0) {
-        q.push({ type: 'start', I: 0.05 }, { type: 'slalom', I: 0.16 }, { type: 'field', I: 0.24 },
-          { type: 'sweep', I: 0.32 }, { type: 'gates', I: 0.36 }, { type: 'rest', I: 0 });
+        q.push({ type: 'start', I: 0.05 }, { type: 'slalom', I: 0.5 }, { type: 'field', I: 0.6 },
+          { type: 'sweep', I: 0.66 }, { type: 'gates', I: 0.72 }, { type: 'rest', I: 0 });
         this.recent = ['field', 'gates'];
         return;
       }
-      const I0 = Math.min(0.16 + 0.1 * w, 0.6), I1 = Math.min(0.46 + 0.15 * w, 1);
+      const I0 = Math.min(0.5 + 0.12 * w, 0.85), I1 = Math.min(0.75 + 0.12 * w, 1);
       const n = (w === 1 ? 4 : 3 + Math.min(w, 2)) + (r.chance(0.4) ? 1 : 0);
       const fresh = Object.keys(TYPES).filter((t) => TYPES[t].w === w);
       const picks = [];

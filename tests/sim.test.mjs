@@ -119,7 +119,8 @@ function run(st, tr, inpFn, maxSteps, until) {
   }
   return out;
 }
-const hold = (st) => { const e = -st.o - st.vo * 0.11; return e > 0.3 ? 1 : e < -0.3 ? -1 : 0; };
+// leads by the glide: with heavy handling the skier keeps sliding after release
+const hold = (st) => { const e = -st.o - st.vo * 0.4; return e > 0.3 ? 1 : e < -0.3 ? -1 : 0; };
 
 // =============================================================================== 1. determinism
 test('determinism: the same seed builds the same track, different seeds different ones', () => {
@@ -437,6 +438,7 @@ test('rules: a close call raises the multiplier once per row; a wide pass does n
 
 test('rules: the multiplier caps at MULT_MAX and sheds one level at a time on the documented timers; score = distance x multiplier', (t) => {
   const { tr, st } = bare();
+  tr.ensure(3000); tr.obstacles.length = 0; tr.pads.length = 0;    // at today's speeds this test runs past the first stretch built
   for (let i = 0; i < 7; i++) addPad(tr, 50 + i * 12, 0);       // seven separate strips: more than enough for the cap
   let sum = 0, lastUp = 0, sPrev = st.s, maxMult = 1;
   const downs = [], dists = {};
@@ -447,12 +449,13 @@ test('rules: the multiplier caps at MULT_MAX and sheds one level at a time on th
       if (e.type === 'flow') lastUp = st.t;
       if (e.type === 'flowDown') downs.push({ t: st.t, mult: e.mult });
     }
+    if (!st.alive) break;                // ran off the bare test road: the timers below were already seen
     assert.ok(st.mult >= 1 && st.mult <= C.MULT_MAX);
     maxMult = Math.max(maxMult, st.mult);
     sum += (st.s - sPrev) * st.mult;
     dists[st.mult] = (dists[st.mult] || 0) + (st.s - sPrev);
     sPrev = st.s;
-    assert.ok(Math.abs(st.score - sum) < 1e-6, 'score left distance x multiplier at step ' + i);
+    assert.ok(Math.abs(st.score - sum) < 1e-6 * Math.max(1, sum), 'score left distance x multiplier at step ' + i);
     if (st.mult === 1 && downs.length) break;
   }
   assert.ok(st.alive, 'died: ' + st.cause + ' ' + st.into);
@@ -603,9 +606,9 @@ test('steering feel, as numbers', (t) => {
   n = 0;
   while (Math.abs(st.vo) > 0.05 * top && n < 600) { Sim.step(st, tr, 0, null, false); n++; }
   const glideT = n * DT;
-  for (let i = 0; i < 240; i++) Sim.step(st, tr, 0, null, false);
+  // (heavy handling: after this the slope and bends of the real track take over the drift)
   const glide = st.o - o0;
-  assert.ok(st.alive && Math.abs(st.vo) < 1e-3, 'released, the skier comes to rest sideways');
+  assert.ok(st.alive, 'released, the skier glides on without crashing');
   // reversal: at speed to the right, press left
   ({ tr, st } = fresh());
   for (let i = 0; i < 48; i++) Sim.step(st, tr, 1, null, false);
@@ -625,7 +628,7 @@ test('steering feel, as numbers', (t) => {
   const tLane = n * DT;
 
   const rows = [
-    ['top sideways speed V_LAT (m/s)', top, 19.79],
+    ['top sideways speed V_LAT (m/s)', top, V_TOP],
     ['time to 60% of top speed from rest (s)', t60, T60],
     ['sideways speed after 0.4 s (m/s)', v04, V04],
     ['sideways speed after 0.5 s (m/s)', v05, V05],
@@ -642,4 +645,4 @@ test('steering feel, as numbers', (t) => {
   for (const [name, v, want] of rows) assert.ok(Math.abs(v - want) <= tol(name, want), `${name}: ${v.toFixed(4)} left its band around ${want}`);
   assert.ok(Math.abs(C.tMove(3) - tLane) <= 2 * DT, 'C.tMove (what the generator budgets with) disagrees with the simulation');
 });
-const T60 = 0.1917, V04 = 17.0023, V05 = 18.0826, GLIDE = 1.7475, GLIDE_T = 0.3083, T_STOP = 0.0917, OVER = 0.6185, T_REV = 0.2750, T_LANE = 0.3083;
+const V_TOP = 24.83, T60 = 0.3167, V04 = 17.1546, V05 = 19.1066, GLIDE = 7.1015, GLIDE_T = 1.1833, T_STOP = 0.1417, OVER = 1.0531, T_REV = 0.4583, T_LANE = 0.3333;

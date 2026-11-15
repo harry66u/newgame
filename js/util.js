@@ -144,7 +144,7 @@
 
     // Speed. Base pace is a function of distance, so every stretch of track has a known speed
     // range the generator can design for. Steeper ground = faster.
-    baseSpeed: (s) => 28 + 36 * (1 - Math.exp(-Math.max(0, s) / 5600)),
+    baseSpeed: (s) => 44 + 46 * (1 - Math.exp(-Math.max(0, s) / 3500)),
     terrain: (sl) => clamp(1 + 0.9 * (sl - 0.26), 0.86, 1.2),
     U_MIN_F: 0.84,        // lowest speed (as a fraction of base) the generator has to allow for
     boostV: (B) => 7 + 0.12 * B,
@@ -153,12 +153,13 @@
     K_UP: 2.4,            // how fast speed climbs to its target …
     K_DOWN: 0.9,          // … and how slowly it bleeds off (momentum)
 
-    // Steering: constant push against linear drag. Quick to answer, a short glide on release.
-    STEER_A: 95,
-    STEER_K: 4.8,
-    K_REL: 9,
-    COUNTER: 1.6,         // extra bite when steering against current motion
-    AIR_A: 0.6,
+    // Steering: constant push against linear drag. Heavy on purpose: the skier carries momentum,
+    // keeps sliding when you let go, and has to be caught with a counter-steer. Takes practice.
+    STEER_A: 72,
+    STEER_K: 2.9,
+    K_REL: 2.2,
+    COUNTER: 1.35,         // extra bite when steering against current motion
+    AIR_A: 0.4,
     AIR_K: 2.2,
     GB: 60,               // sideways pull of a tilted surface, per unit of bank
     AC_MAX: 24,           // strongest cornering push the generator will ask the player to hold
