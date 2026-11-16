@@ -223,7 +223,7 @@
     while (track.marks.length && track.marks[0].s <= st.s) {
       const m = track.marks.shift();
       wave = m.wave;
-      if (mode === 'run') { audio.gate(); Hud.wave(wave); }
+      if (mode === 'run') { audio.gate(); Hud.wave(wave, track.chunkAt(m.s + 30).env); }
     }
     track.ensure(st.s + C.GEN_AHEAD);
   }

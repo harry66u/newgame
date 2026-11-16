@@ -4,6 +4,7 @@
    what is shown would change, and nothing here allocates on that path. */
 (function (root) {
   'use strict';
+  const PLACES = { forest: 'Pine forest', glacier: 'Glacier', rocky: 'Rock garden', park: 'Terrain park', resort: 'Chairlift' };
   const FL = root.FL, C = FL.C, Look = FL.Look;
   const $ = (id) => document.getElementById(id);
   const fmt = (n) => {
@@ -122,10 +123,11 @@
     // The multiplier went up. why: 'boost' | 'near'
     flow(mult, why) { Hud.say(why === 'near' ? 'Close call' : why === 'hop' ? 'Clean jump' : 'Ice', why === 'boost' ? 'boost' : 'close'); },
     // A new, harder run begins. wave is 0-based.
-    wave(wave) {
+    // place: where this stretch of mountain is (forest, glacier, ...), named under the run's rating
+    wave(wave, place) {
       const r = Look.rating(wave);
       el.callsym.innerHTML = symbol(r);
-      Hud.say(r.name + ' run', 'wave');
+      Hud.say(r.name + ' run' + (PLACES[place] ? ' · ' + PLACES[place] : ''), 'wave');
     },
     newBest() { el.best.textContent = 'New best'; el.best.classList.add('new'); Hud.say('New best', 'best'); },
     /* r: { score, best, isNew, dist (m along the run), vert (m of vertical drop), wave } */
