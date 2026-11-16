@@ -29,7 +29,7 @@
   const TYPES = {
     open: { w: 0, wt: 0.6 }, slalom: { w: 0, wt: 1 }, sweep: { w: 0, wt: 0.9 }, field: { w: 0, wt: 1 },
     gates: { w: 0, wt: 1 }, bridge: { w: 0, wt: 0.9 }, jump: { w: 0, wt: 1.5 }, tilt: { w: 0, wt: 0.8 },
-    split: { w: 1, wt: 0.9 }, islands: { w: 1, wt: 1 },
+    split: { w: 1, wt: 0.9 }, islands: { w: 1, wt: 1 }, hurdles: { w: 0, wt: 1.3 },
   };
 
   class Track {
@@ -469,10 +469,14 @@
         if (this.recent.length > 3) this.recent.shift();
       }
       if (!picks.includes('jump')) picks[1 + ((r() * (n - 1)) | 0)] = 'jump';       // every wave has air in it
+      if (!picks.includes('hurdles')) {                                                // …and fences you have to jump
+        const free = picks.map((p, i) => (p === 'jump' || i === 0 ? -1 : i)).filter((i) => i >= 0);
+        picks[free.length ? free[(r() * free.length) | 0] : 0] = 'hurdles';
+      }
       picks.forEach((type, i) => q.push({ type, I: lerp(I0, I1, Math.pow(i / (n - 1), 1.15)), env }));
       const peak = Math.min(1, I1 + 0.12);
       q.push({ type: 'drop', I: I1, env });
-      const hard = ['gates', 'field', 'slalom', 'jump'].filter((t) => t !== this.recent[this.recent.length - 1]);
+      const hard = ['gates', 'field', 'slalom', 'jump', 'hurdles'].filter((t) => t !== this.recent[this.recent.length - 1]);
       if (w >= 1) hard.push('islands');
       const climax = r.pick(hard);
       q.push({ type: climax, I: peak, climax: true, env });
@@ -498,6 +502,38 @@
       this._block(132, 1.2, 1.6, 'pines');
       this._block(176, -2.4, 1.5, 'pines');
       this._pad(176, 0.9);
+    }
+
+    /* Low fences right across the piste: the only way past is to jump them (Space). Spaced in
+       time at top speed so there is always room to land, steady yourself and time the next. */
+    _c_hurdles(I) {
+      const r = this.rng, W = lerp(7.2, 6.0, I), sl = 0.22 + 0.1 * I;
+      this._begin(sl);
+      const n = 2 + Math.round(I * 2.5 * r());
+      const gap = this.uMax * lerp(1.3, 0.95, I) * r.range(1, 1.25);
+      const lead = this.uNom * 1.4, L = lead + gap * (n - 1) + this.uNom * 1.2;
+      const k0 = this.k, s0 = k0 * SEG;
+      this._walk(this._segs(L), { cv: 0, sl, int: I });          // straight and level across: a fence is the same height edge to edge
+      this._main(k0, this.k, W);
+      for (let i = 0; i < n; i++) this._hurdle(s0 + lead + gap * i);
+      // at the top end, something to steer round between the fences as well
+      if (I > 0.55 && n > 1) {
+        const rows = [];
+        for (let i = 0; i < n - 1; i++) if (r.chance(0.6)) {
+          const hx = r.range(0.9, 1.5);
+          rows.push({ blocks: [[r.range(-1, 1) * (W - hx - 0.6), hx]], min: 0, at: lead + gap * (i + 0.5) });
+        }
+        for (const row of rows) this._block(s0 + row.at, row.blocks[0][0], row.blocks[0][1]);
+      }
+    }
+
+    _hurdle(s) {
+      if (this.surfaceAt(s, 0, 1e9, SF) !== 1) return null;
+      const rb = SF.rb, i = Math.max(0, Math.min(rb.n - 1, Math.round(s / SEG - rb.k0)));
+      const ob = this._block(s, rb.c[i], rb.hw[i] + 0.3, 'fence');
+      if (!ob) return null;
+      ob.h = C.HURDLE_H; ob.yTop = ob.yTop - 1.7 + C.HURDLE_H; ob.hurdle = true;
+      return ob;
     }
 
     _c_open(I) {

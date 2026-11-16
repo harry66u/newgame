@@ -18,7 +18,7 @@
       mult: 1, flowT: 0, score: 0, minCl: 99,
       alive: true, cause: '', into: '', deadT: 0, started: false,
       // what this state has already collected, so a look-ahead copy cannot collect it twice
-      padS: -1, lastGrp: 0, lastRow: 0, slope: 0,
+      padS: -1, lastGrp: 0, lastRow: 0, slope: 0, jumpBuf: 0,
     };
   }
 
@@ -29,6 +29,9 @@
     st.slope = tr.frameAt(st.s, FR).sl;
     return st;
   }
+
+  // Ask for a jump (keyboard, swipe or bot). Buffered briefly, so a press just before landing counts.
+  function jump(st) { if (st.alive && st.started) st.jumpBuf = C.JUMP_BUF; }
 
   function copy(dst, src) {
     for (const k in src) dst[k] = src[k];
@@ -131,6 +134,14 @@
       if (code === 2) st.under = true;
     }
 
+    // --- the player's own jump: pressed in the air, it happens the moment the skis touch down
+    if (st.jumpBuf > 0) {
+      if (st.onGround && !st.falling) {
+        st.vy = st.gvy + C.JUMP_V; st.onGround = false; st.air = 0.051; st.jumpBuf = 0;
+        if (ev) ev.push({ type: 'jump' });
+      } else st.jumpBuf -= DT;
+    }
+
     // --- falling
     if (!st.onGround) {
       const below = fr.y - st.y;
@@ -156,10 +167,10 @@
         const cl = Math.abs(st.o - ob.o) - ob.hx - C.R;
         if (cl < st.minCl) st.minCl = cl;
         if (ev) ev.push({ type: 'pass', side: ob.o > st.o ? 1 : -1, cl, ob });
-        if (cl < C.NEAR && !ob.row.near && ob.row.id !== st.lastRow) {
+        if ((ob.hurdle || cl < C.NEAR) && !ob.row.near && ob.row.id !== st.lastRow) {
           st.lastRow = ob.row.id;
           if (!ghost) ob.row.near = true;
-          flowUp(st, ev, 'near');
+          flowUp(st, ev, ob.hurdle ? 'hop' : 'near');          // clearing a hurdle counts like a close call
         }
       }
     }
@@ -216,5 +227,5 @@
     cam.trauma = Math.max(0, cam.trauma - DT * 1.9);
   }
 
-  FL.Sim = { newState, reset, copy, launch, step, newCam, camStep, DT };
+  FL.Sim = { jump, newState, reset, copy, launch, step, newCam, camStep, DT };
 })(typeof window !== 'undefined' ? window : globalThis);

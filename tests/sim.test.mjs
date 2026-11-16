@@ -49,6 +49,7 @@ function newGame(seed, inputs) {
 function stepOnce(g, inp) {
   g.ev.length = 0;
   if (inp === undefined) inp = g.inputs && g.steps < g.inputs.length ? g.inputs[g.steps] : 0;
+  if (inp >= 3) { Sim.jump(g.st); inp -= 4; }      // recorded inputs carry a jump as steer + 4
   Sim.step(g.st, g.tr, inp, g.ev, false);
   g.tr.ensure(g.st.s + C.GEN_AHEAD);
   g.steps++;
@@ -74,8 +75,8 @@ function record(seed, nSteps) {
   const g = newGame(seed), bot = new Bot(Object.assign({ seed }, PERFECT));
   const inputs = new Int8Array(nSteps), states = [snap(g.st)], events = [];
   for (let i = 0; i < nSteps; i++) {
-    const inp = bot.input(g.st, g.tr);
-    inputs[i] = inp;
+    const jb = g.st.jumpBuf, inp = bot.input(g.st, g.tr);
+    inputs[i] = inp + (g.st.jumpBuf > jb ? 4 : 0);
     stepOnce(g, inp);
     for (const e of g.ev) events.push(i + ':' + e.type + ':' + (e.why || e.cause || ''));
     states.push(snap(g.st));
@@ -320,6 +321,7 @@ test('generator: long tracks on many seeds are well-formed, sorted and passable'
     //     whole ball (radius R) clear of every block in the row and its centre on the road
     m.rows += rows.size;
     for (const row of rows.values()) {
+      if (row.some((o) => o.hurdle)) continue;      // a hurdle spans the piste on purpose: it is jumped, not passed (the fairness bot covers it)
       const s = row[0].s;
       for (const ob of row) assert.ok(Math.abs(ob.s - s) < 1e-9, `${id}: a row is spread along the track`);
       let best = 0;
@@ -438,7 +440,7 @@ test('rules: a close call raises the multiplier once per row; a wide pass does n
 
 test('rules: the multiplier caps at MULT_MAX and sheds one level at a time on the documented timers; score = distance x multiplier', (t) => {
   const { tr, st } = bare();
-  tr.ensure(3000); tr.obstacles.length = 0; tr.pads.length = 0;    // at today's speeds this test runs past the first stretch built
+  tr.ensure(3000); tr.obstacles.length = 0; tr.pads.length = 0; tr.noPads = false;    // at today's speeds this test runs past the first stretch built
   for (let i = 0; i < 7; i++) addPad(tr, 50 + i * 12, 0);       // seven separate strips: more than enough for the cap
   let sum = 0, lastUp = 0, sPrev = st.s, maxMult = 1;
   const downs = [], dists = {};

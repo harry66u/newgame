@@ -120,7 +120,7 @@
       if (el.call.animate) callAnim = el.call.animate(calm() ? SAY_CALM : SAY, pri > 1 ? LONG : SHORT);
     },
     // The multiplier went up. why: 'boost' | 'near'
-    flow(mult, why) { Hud.say(why === 'near' ? 'Close call' : 'Ice', why === 'near' ? 'close' : 'boost'); },
+    flow(mult, why) { Hud.say(why === 'near' ? 'Close call' : why === 'hop' ? 'Clean jump' : 'Ice', why === 'boost' ? 'boost' : 'close'); },
     // A new, harder run begins. wave is 0-based.
     wave(wave) {
       const r = Look.rating(wave);

@@ -25,13 +25,14 @@
       for (let x = -9; x <= 9.01; x += 1.125) this.lanes.push(x);
     }
 
-    // returns { ok, score }
-    _roll(st, tr, t1, t2, sw, H) {
+    // returns { ok, score }. tj: the step at which to press jump in this rollout (-1: never)
+    _roll(st, tr, t1, t2, sw, H, tj) {
       const g = Sim.copy(this.g, st);
       g.minCl = 99;
       let minEdge = 9;
       const s0 = g.score;
       for (let i = 0; i < H; i++) {
+        if (i === tj) Sim.jump(g);
         Sim.step(g, tr, ctrl(g, i < sw ? t1 : t2), null, true);
         if (!g.alive || g.falling || g.under) return { ok: false, score: i };
         if (g.onGround && g.edge < minEdge) minEdge = g.edge;
@@ -41,8 +42,31 @@
       return { ok: true, score };
     }
 
+    /* Hurdles: if every line dies, look for the right moment to jump. Jumping now only wins if
+       no later jump in the horizon also works, so the bot waits for the last good moment. */
+    _planJump(st, tr, H) {
+      if (!st.onGround) return '';
+      // judge each jump only up to just past the next hurdle: the one after gets its own jump
+      let hd = null;
+      for (const ob of tr.obstacles) if (ob.hurdle && ob.s + ob.hz > st.s) { hd = ob; break; }
+      if (!hd) return '';
+      H = Math.min(H, Math.ceil((hd.s + 6 - st.s) / Math.max(st.u, 1) / C.STEP));
+      let bestNow = -1, bestLater = -1;
+      for (let tj = 0; tj < H; tj += this.period) {
+        for (const t of [0, -2, 2, -4, 4]) {                 // take off near the middle: there is no steering in the air
+          const r = this._roll(st, tr, t, t, H, H, tj);
+          if (!r.ok) continue;
+          if (tj === 0) { if (r.score > bestNow) { bestNow = r.score; this.jumpT = t; } }
+          else if (r.score > bestLater) { bestLater = r.score; this.laterT = t; }
+        }
+        if (bestLater > 0) return 'later';
+      }
+      return bestNow > 0 ? 'now' : '';
+    }
+
     _plan(st, tr) {
       const H = Math.round(this.horizon / C.STEP);
+      this.jumpNow = false;
       const cur = this._roll(st, tr, this.target, this.target, H, H);
       // keep a working plan most of the time; look for a better line a few times a second
       if (cur.ok && !this.greed && (this.tick / this.period) % 4 !== 0) return this.target;
@@ -52,6 +76,11 @@
         if (r.ok) anyOk = true;
         const sc = r.score - (r.ok ? Math.abs(t - this.target) * 0.6 : 0);
         if (sc > best) { best = sc; bestT = t; }
+      }
+      if (!anyOk) {
+        const j = this._planJump(st, tr, H);
+        if (j === 'later') return this.laterT;                 // line up: the jump comes in a moment
+        if (j === 'now') { this.jumpNow = true; return this.jumpT; }
       }
       if (!anyOk && this.twoStage) {
         for (const sw of [0.2, 0.4, 0.65, 0.9]) {
@@ -71,11 +100,11 @@
       if (this.tick % this.period === 0) {
         let t = this._plan(st, tr);
         if (this.noise) t += (this.rng() + this.rng() + this.rng() - 1.5) * this.noise * 1.4;
-        if (this.delay) this.pending.push({ at: st.t + this.delay, t });
-        else this.target = t;
+        if (this.delay) this.pending.push({ at: st.t + this.delay, t, jump: this.jumpNow });
+        else { this.target = t; if (this.jumpNow) Sim.jump(st); }
       }
       this.tick++;
-      while (this.pending.length && this.pending[0].at <= st.t) this.target = this.pending.shift().t;
+      while (this.pending.length && this.pending[0].at <= st.t) { const p = this.pending.shift(); this.target = p.t; if (p.jump) Sim.jump(st); }
       return ctrl(st, this.target);
     }
   }

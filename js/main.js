@@ -122,6 +122,7 @@
       case 'pass': passSide = e.side; if (e.cl < 4.5) audio.pass(e.side, clamp(1 - e.cl / 4.5, 0, 1), e.ob.kind); break;
       case 'land': audio.land(e.v); cam.trauma = Math.max(cam.trauma, calm ? 0 : clamp(e.v / 42, 0.12, 0.55)); break;
       case 'fall': audio.fall(); break;
+      case 'jump': audio.launch(); break;
       case 'dead': onDead(e); break;
     }
     R.onEvent(e, view);
@@ -150,6 +151,8 @@
     if (side) { key(e.code, side, true); e.preventDefault(); }
     if ((e.code === 'Space' && !Hud.isMuteTarget(e.target)) || e.code === 'ArrowUp' || e.code === 'ArrowDown') e.preventDefault();
     if (e.repeat) return;
+    // jump: Space, up arrow or W, once a run is under way
+    if (mode === 'run' && !paused && (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW')) { Sim.jump(st); return; }
     Hud.setTouch(false);
     if (e.code === 'KeyM') { if (!paused) audio.init(); toggleMute(); return; }
     if (e.code === 'KeyP' || e.code === 'Escape') { if (mode === 'run') setPaused(!paused); return; }
@@ -170,11 +173,15 @@
     e.preventDefault();
     window.focus();            // preventDefault also cancels the focus change: without this an embedded frame never gets the keyboard
     if (press() && mode !== 'run') return;
-    touches.push({ id: e.pointerId, side: sideOf(e.clientX) });
+    touches.push({ id: e.pointerId, side: sideOf(e.clientX), y0: e.clientY, t0: performance.now(), flicked: false });
     refreshDir();
   }, { passive: false });
   window.addEventListener('pointermove', (e) => {
-    for (const t of touches) if (t.id === e.pointerId) { t.side = sideOf(e.clientX); refreshDir(); }
+    for (const t of touches) if (t.id === e.pointerId) {
+      t.side = sideOf(e.clientX); refreshDir();
+      // a quick flick upward is a jump
+      if (!t.flicked && t.y0 - e.clientY > 36 && performance.now() - t.t0 < 350) { t.flicked = true; if (mode === 'run') Sim.jump(st); }
+    }
   });
   const lift = (e) => {
     if (!paused && !document.hidden) audio.init();        // a finger coming up is what browsers count as the gesture that unlocks sound
