@@ -52,11 +52,13 @@
       if (!hd) return '';
       H = Math.min(H, Math.ceil((hd.s + 6 - st.s) / Math.max(st.u, 1) / C.STEP));
       let bestNow = -1, bestLater = -1;
-      for (let tj = 0; tj < H; tj += this.period) {
+      // a bot that reacts late presses that much early: "now" is when its press will land
+      const now = Math.round(this.delay / C.STEP);
+      for (let tj = now; tj < H; tj += this.period) {
         for (const t of [0, -2, 2, -4, 4]) {                 // take off near the middle: there is no steering in the air
           const r = this._roll(st, tr, t, t, H, H, tj);
           if (!r.ok) continue;
-          if (tj === 0) { if (r.score > bestNow) { bestNow = r.score; this.jumpT = t; } }
+          if (tj === now) { if (r.score > bestNow) { bestNow = r.score; this.jumpT = t; } }
           else if (r.score > bestLater) { bestLater = r.score; this.laterT = t; }
         }
         if (bestLater > 0) return 'later';

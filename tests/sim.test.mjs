@@ -241,7 +241,7 @@ test('fairness: the perfect-play bot survives 10 km on five seeds', (t) => {
 });
 
 // =============================================================================== 4. generator
-const KINDS = { pine: 1, pines: 1, rock: 1, fence: 1 };
+const KINDS = { pine: 1, pines: 1, rock: 1, fence: 1, box: 1, tower: 1 };
 // Road spans [lo, hi] under track position s: where the skier's centre can be on the ground.
 function spansAt(tr, s) {
   const out = [];

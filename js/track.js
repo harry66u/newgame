@@ -20,7 +20,16 @@
      along an open ridge: [left, right]. Leaving a forested edge ends the run in the trees
      instead of in a fall; it is exactly as final, just a different view. */
   const NOWALL = [0, 0];
-  const ENVS = ['forest', 'glacier', 'rocky'];
+  /* Biomes: each wave is its own stretch of mountain, and each favours the sections that suit it.
+     A weight of 0 keeps a section out of that biome (no chairlifts on a glacier). */
+  const ENVS = ['forest', 'glacier', 'rocky', 'park', 'resort'];
+  const BIAS = {
+    forest: { slalom: 1.7, field: 1.5, gates: 1.1, sweep: 1.3, tilt: 1.1, boxes: 0, lift: 0 },
+    glacier: { bridge: 1.9, islands: 1.7, split: 1.5, open: 1.3, rollers: 1.3, slalom: 0.5, gates: 0.4, boxes: 0, lift: 0 },
+    rocky: { field: 1.5, tilt: 1.6, open: 1.4, rollers: 1.3, drop: 1.2, boxes: 0, lift: 0 },
+    park: { jump: 2.4, hurdles: 1.6, boxes: 2.6, rollers: 2.0, slalom: 0.3, field: 0.3, tilt: 0.5, lift: 0 },
+    resort: { lift: 2.8, gates: 1.7, rollers: 1.2, open: 1.2, sweep: 1.1, boxes: 0, islands: 0.4 },
+  };
   const WALLS = { open: [1, 1], slalom: [1, 1], gates: [1, 1], field: [1, 1], sweep: [1, 1], tilt: [1, 1] };
   // Sections that always keep their boost strips; elsewhere a share of sections go without.
   const KEEP_PADS = { start: 1, rest: 1, drop: 1, jump: 1, bridge: 1, split: 1 };
@@ -30,6 +39,7 @@
     open: { w: 0, wt: 0.6 }, slalom: { w: 0, wt: 1 }, sweep: { w: 0, wt: 0.9 }, field: { w: 0, wt: 1 },
     gates: { w: 0, wt: 1 }, bridge: { w: 0, wt: 0.9 }, jump: { w: 0, wt: 1.5 }, tilt: { w: 0, wt: 0.8 },
     split: { w: 1, wt: 0.9 }, islands: { w: 1, wt: 1 }, hurdles: { w: 0, wt: 1.3 },
+    rollers: { w: 0, wt: 1 }, boxes: { w: 0, wt: 1 }, lift: { w: 0, wt: 1 },
   };
 
   class Track {
@@ -44,6 +54,8 @@
       this.pads = [];
       this.crags = [];
       this.arches = [];
+      this.flags = [];          // terrain-park pennants at the piste edges: { s, o, hue }
+      this.liftId = 0;
       this.marks = [];
       this.obsV = 0;            // bumped whenever obstacles are added (renderers cache against it)
       this.cw = NOWALL; this.noPads = false;
@@ -164,6 +176,7 @@
       keep(this.pads, (p) => p.s + 4 >= sBehind);
       keep(this.crags, (c) => c.s >= sBehind - 80);
       keep(this.arches, (a) => a.s >= sBehind - 6);
+      keep(this.flags, (f) => f.s >= sBehind - 6);
       keep(this.marks, (m) => m.s >= sBehind);
       if (this.chunks.length > 12) this.chunks.splice(0, this.chunks.length - 12);
     }
@@ -248,8 +261,14 @@
       const rb = this._rib(k0, k1, {
         hw: (i) => lerp(from, W, smooth(i / ease)), e: o.e, capA: o.capA, capB: o.capB,
       });
+      if (this.env === 'park') {                                          // pennants down both edges
+        for (let i = 4; i < rb.n - 2; i += 9) {
+          const s = (rb.k0 + i) * SEG;
+          for (const sd of [-1, 1]) this.flags.push({ s, o: rb.c[i] + sd * (rb.hw[i] + 0.45), hue: (((rb.k0 + i) / 9) | 0) % 4 });
+        }
+      }
       let walls = o.walls || this.cw;
-      if (this.env === 'glacier') walls = NOWALL;                       // no trees up here: every edge is a drop
+      if (this.env === 'glacier' || this.env === 'park') walls = NOWALL;  // no trees up here: every edge is a drop
       else if (this.env === 'rocky' && walls !== NOWALL) walls = (k0 >> 4) & 1 ? [walls[0], 0] : [0, walls[1]];   // rocky: the trees thin to one side
       const fill = (w) => {
         if (!w) return null;
@@ -351,11 +370,14 @@
       kind = kind || (hx <= 1.25 ? 'pine' : 'rock');
       // above the tree line there is only rock; on rocky ground about half the trees are boulders
       if ((kind === 'pine' || kind === 'pines') && (this.env === 'glacier' || (this.env === 'rocky' && hash01(o, s) < 0.5))) kind = 'rock';
+      if (this.env === 'park' && (kind === 'pine' || kind === 'pines' || kind === 'rock')) kind = 'box';      // the park is built, not grown
       const seed = hash01(s, o);
       let h, hz;
       if (kind === 'pine') { h = 5.4 + 2.4 * seed; hz = Math.min(0.95, hx * 0.85); }
       else if (kind === 'pines') { h = 5.2 + 1.2 * seed; hz = 0.8; }
       else if (kind === 'rock') { h = 1.5 + Math.min(hx, 2.4) * 0.4 + 0.5 * seed; hz = 0.9; }
+      else if (kind === 'box') { h = 0.6; hz = 1.2 + 1.2 * seed; }               // low enough to jump, long enough to mean it
+      else if (kind === 'tower') { h = 9 + 2 * seed; hz = hx; }
       else { h = 1.7; hz = 0.35; }
       const ob = { s, o, hx, hz, h, kind, flag: flag || 0, seed, row: ref || { near: false, id: this._id() }, e: SF.h - fr.y, b: SF.b, yTop: SF.h + h };
       this._obs.push(ob);
@@ -451,26 +473,29 @@
       if (w === 0) q.push({ type: 'start', I: 0.05, env });
       const I0 = Math.min(0.5 + 0.12 * w, 0.85), I1 = Math.min(0.75 + 0.12 * w, 1);
       const n = (w <= 1 ? 4 : 3 + Math.min(w, 2)) + (r.chance(0.4) ? 1 : 0);
-      const fresh = w === 0 ? [] : Object.keys(TYPES).filter((t) => TYPES[t].w === w);
+      const fresh = w === 0 ? [] : Object.keys(TYPES).filter((t) => TYPES[t].w === w && BIAS[env][t] !== 0);
       const picks = [];
       for (let i = 0; i < n; i++) {
         let type;
         if (fresh.length && i >= 1) type = fresh.splice((r() * fresh.length) | 0, 1)[0];
         else {
-          const pool = Object.keys(TYPES).filter((t) => TYPES[t].w <= w && !this.recent.includes(t));
+          const bias = BIAS[env], wt = (t) => TYPES[t].wt * (bias[t] === undefined ? 1 : bias[t]);
+          const pool = Object.keys(TYPES).filter((t) => TYPES[t].w <= w && !this.recent.includes(t) && wt(t) > 0);
           let total = 0;
-          for (const t of pool) total += TYPES[t].wt;
+          for (const t of pool) total += wt(t);
           let x = r() * total;
           type = pool[pool.length - 1];
-          for (const t of pool) { x -= TYPES[t].wt; if (x <= 0) { type = t; break; } }
+          for (const t of pool) { x -= wt(t); if (x <= 0) { type = t; break; } }
         }
         picks.push(type);
         this.recent.push(type);
         if (this.recent.length > 3) this.recent.shift();
       }
+      const sig = { park: 'boxes', resort: 'lift', glacier: 'bridge', rocky: 'tilt', forest: 'slalom' }[env];
+      if (!picks.includes(sig)) picks[0] = sig;                                         // the biome shows itself at once
       if (!picks.includes('jump')) picks[1 + ((r() * (n - 1)) | 0)] = 'jump';       // every wave has air in it
       if (!picks.includes('hurdles')) {                                                // …and fences you have to jump
-        const free = picks.map((p, i) => (p === 'jump' || i === 0 ? -1 : i)).filter((i) => i >= 0);
+        const free = picks.map((p, i) => (p === 'jump' || p === sig ? -1 : i)).filter((i) => i >= 0);
         picks[free.length ? free[(r() * free.length) | 0] : 0] = 'hurdles';
       }
       picks.forEach((type, i) => q.push({ type, I: lerp(I0, I1, Math.pow(i / (n - 1), 1.15)), env }));
@@ -525,6 +550,73 @@
         }
         for (const row of rows) this._block(s0 + row.at, row.blocks[0][0], row.blocks[0][1]);
       }
+    }
+
+    /* Rollers: the snow rises and falls in smooth humps. Hit a crest at speed and you leave the
+       ground for a moment, with only a little steering in the air. Later, things to dodge between. */
+    _c_rollers(I) {
+      const r = this.rng, W = lerp(7.0, 5.9, I), sl = 0.24 + 0.1 * I;
+      this._begin(sl);
+      const lam = this.uNom * r.range(0.45, 0.65), amp = lerp(0.8, 1.6, I) * r.range(0.85, 1.15);
+      const rows = [];
+      const count = I < 0.35 ? 0 : 1 + Math.round(I * 2 * r());
+      for (let i = 0; i < count; i++) {
+        const hx = r.range(0.9, 1.6);
+        rows.push({ blocks: [[r.range(-1, 1) * (W - hx - 0.4), hx]], min: this.uNom * 0.9 });
+      }
+      const L = Math.max(lam * r.range(4, 6.5), this._layout(rows, W, I) + this.uNom * 0.6);
+      const k0 = this.k, s0 = k0 * SEG;
+      this._walk(this._segs(L), { cv: this._curve(L, lerp(0.2, 0.6, I), 'S'), sl, int: I });
+      const nL = lam / SEG, nE = Math.min(6, (this.k - k0) / 4);
+      this._main(k0, this.k, W, {
+        e: (i, n) => amp * 0.5 * (1 - Math.cos((TAU * i) / nL)) * smooth(i / nE) * smooth((n - 1 - i) / nE),
+      });
+      this._rows(s0, rows);
+    }
+
+    /* Terrain park: rows of low orange boxes. Jump them for the multiplier or ride round them. */
+    _c_boxes(I) {
+      const r = this.rng, W = lerp(7.4, 6.2, I), sl = 0.22 + 0.1 * I;
+      this._begin(sl);
+      const rows = [];
+      const count = 3 + Math.round(I * 3 * r());
+      for (let i = 0; i < count; i++) {
+        const two = I > 0.5 && r.chance(0.5), hx = r.range(0.8, two ? 1.3 : 1.8);
+        const blocks = two ? [[-(W * 0.55), hx], [W * 0.55, hx]] : [[r.range(-1, 1) * (W - hx - 0.6), hx]];
+        rows.push({ blocks, kind: 'box', min: this.uNom * 0.7 });
+      }
+      const L = Math.max(this.uNom * 3, this._layout(rows, W, I) + this.uNom * 0.6);
+      const k0 = this.k, s0 = k0 * SEG;
+      this._walk(this._segs(L), { cv: this._curve(L, lerp(0.2, 0.5, I), 'S'), sl, int: I });
+      this._main(k0, this.k, W);
+      this._rows(s0, rows);
+      this._padLine(s0 + L * 0.15, 0, 2, 9);
+    }
+
+    /* Resort: the run passes under a chairlift whose towers stand in the piste, one line of them
+       down the slope, swinging from side to side as the lift line and the run cross. */
+    _c_lift(I) {
+      const r = this.rng, W = lerp(7.6, 6.4, I), sl = 0.22 + 0.12 * I;
+      this._begin(sl);
+      const rows = [], lineO = r.sign() * r.range(0.5, 2.6), drift = r.range(-0.6, 0.6);
+      const count = 3 + Math.round(I * 2 + r());
+      for (let i = 0; i < count; i++) {
+        const o = clamp(lineO + drift * i, -(W - 1.6), W - 1.6);
+        const blocks = [[o, 0.62]];
+        if (I > 0.45 && r.chance(0.5)) {                        // a groomer's marker, a snow gun: something on the open side
+          const side = o > 0 ? -1 : 1, hx = r.range(0.8, 1.3);
+          blocks.push([side * (W - hx - 0.3), hx]);
+        }
+        rows.push({ blocks, kind: 'tower', min: this.uNom * 1.0 });
+      }
+      const L = Math.max(this.uNom * 3, this._layout(rows, W, I) + this.uNom * 0.6);
+      const k0 = this.k, s0 = k0 * SEG;
+      this._walk(this._segs(L), { cv: this._curve(L, lerp(0.15, 0.4, I), 'C'), sl, int: I });
+      this._main(k0, this.k, W);
+      this._rows(s0, rows);
+      const id = ++this.liftId;
+      for (const ob of this._obs) if (ob.hx === 0.62 && ob.kind === 'tower') ob.lift = id;
+      for (const ob of this._obs) if (ob.kind === 'tower' && ob.hx !== 0.62) { ob.kind = 'rock'; ob.h = 1.5 + ob.hx * 0.4; ob.hz = 0.9; ob.yTop = ob.yTop - 9 - 2 * ob.seed + ob.h; }
     }
 
     _hurdle(s) {

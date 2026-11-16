@@ -167,10 +167,11 @@
         const cl = Math.abs(st.o - ob.o) - ob.hx - C.R;
         if (cl < st.minCl) st.minCl = cl;
         if (ev) ev.push({ type: 'pass', side: ob.o > st.o ? 1 : -1, cl, ob });
-        if ((ob.hurdle || cl < C.NEAR) && !ob.row.near && ob.row.id !== st.lastRow) {
+        const hop = ob.hurdle || (ob.kind === 'box' && st.y >= ob.yTop - 0.15);
+        if ((hop || cl < C.NEAR) && !ob.row.near && ob.row.id !== st.lastRow) {
           st.lastRow = ob.row.id;
           if (!ghost) ob.row.near = true;
-          flowUp(st, ev, ob.hurdle ? 'hop' : 'near');          // clearing a hurdle counts like a close call
+          flowUp(st, ev, hop ? 'hop' : 'near');          // clearing a hurdle counts like a close call
         }
       }
     }
