@@ -1,4 +1,4 @@
-/* Fall Line — the skier. A low-poly figure built from 22 tapered boxes in one instanced draw:
+/* Fall Line — the skier. A low-poly figure built from 25 tapered boxes in one instanced draw:
    two skis with tips, boots, legs, hips, torso, arms, mitts, helmet with a goggle band, poles.
    Posed on the CPU every frame: a handful of pose numbers (hip height, spine pitch, where the
    hands go) are blended between stances, the limbs are solved with two-bone IK, and everything
@@ -9,11 +9,12 @@
   const FL = root.FL, U = FL.U, Look = FL.Look, Gfx = FL.Gfx, COL = Look.COL;
   const { clamp, smooth } = U;
 
-  const NP = 22, ST = 16;                              // parts; floats per part: centre3, axisX3, axisY3, axisZ3, colour3, taper
+  const NP = 25, ST = 16;                              // parts; floats per part: centre3, axisX3, axisY3, axisZ3, colour3, taper
   const LEAN = 0.61;                                   // 35 degrees at full carve
   const SHIN = 0.40, THIGH = 0.42, UARM = 0.29, FARM = 0.27;
   // part slots: 0-3 skis and tips, 4-5 poles (the gear that comes off), then per side from 6:
-  // boot, shin, thigh, upper arm, forearm, mitt; 18 hips, 19 torso, 20 helmet, 21 goggle band
+  // boot, shin, thigh, upper arm, forearm, mitt; 18 hips, 19 torso, 20 helmet, 21 goggle band,
+  // 22 race bib, 23 helmet stripe, 24 neck gaiter
   const data = new Float32Array(NP * ST);
 
   // pose numbers: hip height, hip fore/aft, spine pitch, hand out / up / forward of the shoulder,
@@ -158,6 +159,11 @@
     const cx = scx + sx * 0.03 + ux * 0.15, cy = scy + sy * 0.03 + uy * 0.15, cz = scz + sz * 0.03 + uz * 0.15;
     bone(20, cx - ux * 0.125, cy - uy * 0.125, cz - uz * 0.125, cx + ux * 0.125, cy + uy * 0.125, cz + uz * 0.125, 0.12, 0.132, tx, ty, 0, COL.helmet, 0.8);
     bone(21, cx - ux * 0.045, cy - uy * 0.045, cz - uz * 0.045 + 0.012, cx + ux * 0.035, cy + uy * 0.035, cz + uz * 0.035 + 0.012, 0.132, 0.145, tx, ty, 0, COL.goggles, 0.94);
+    // a race bib over the jacket: white panels front and back, so the figure reads as a racer from the chase camera
+    const bhx = hx + sx * 0.02, bhy = hy + sy * 0.02, bhz = hz + sz * 0.02;
+    bone(22, scx + (bhx - scx) * 0.1, scy + (bhy - scy) * 0.1, scz + (bhz - scz) * 0.1, scx + (bhx - scx) * 0.72, scy + (bhy - scy) * 0.72, scz + (bhz - scz) * 0.72, 0.15, 0.134, tx, ty, tz, COL.bib, 0.85);
+    bone(23, cx - ux * 0.13, cy - uy * 0.13, cz - uz * 0.13, cx + ux * 0.134, cy + uy * 0.134, cz + uz * 0.134, 0.036, 0.137, tx, ty, 0, COL.jacket, 0.8);
+    bone(24, scx - sx * 0.02, scy - sy * 0.02, scz - sz * 0.02, cx - ux * 0.09, cy - uy * 0.09, cz - uz * 0.09, 0.075, 0.07, tx, ty, 0, COL.pants, 1);
   }
 
   // ---- animation state --------------------------------------------------------------------------

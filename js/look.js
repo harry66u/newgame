@@ -16,13 +16,16 @@
   const COT = 1 / Math.tan(ELEV);                   // shadow length per metre of height
 
   // ---- moods ---------------------------------------------------------------------------------
-  // One per wave, cycling. `lit` is snow in full sun, `shade` is snow in shadow: the whole
+  // One per wave, cycling: bluebird, noon, whiteout, golden hour, alpenglow, last light, moonlight. `lit` is snow in full sun, `shade` is snow in shadow: the whole
   // lighting model is "cool sky fill + warm sun = lit", so those two colours define the light.
   const MOODS = [
     { name: 'bluebird', skyTop: '#1757c2', skyHor: '#a6d0f5', valley: '#143f88', lit: '#fffdf6', shade: '#8db4ea', glow: '#fff3d4', fog: 0.0040, haze: 0.9 },
     { name: 'high noon', skyTop: '#104bb8', skyHor: '#b6daf8', valley: '#12408e', lit: '#ffffff', shade: '#97bdf0', glow: '#ffffff', fog: 0.0036, haze: 0.7 },
+    { name: 'whiteout', skyTop: '#7f90ab', skyHor: '#d3dbe6', valley: '#64738c', lit: '#f4f6f9', shade: '#c6d0de', glow: '#ffffff', fog: 0.0085, haze: 2.4 },
     { name: 'golden hour', skyTop: '#2f5fc0', skyHor: '#f8cfa4', valley: '#3a4a98', lit: '#ffefd6', shade: '#96a0e2', glow: '#ffc98a', fog: 0.0046, haze: 1.5 },
+    { name: 'alpenglow', skyTop: '#3b3f92', skyHor: '#ffa2b2', valley: '#4a3b80', lit: '#ffdbe5', shade: '#9289dc', glow: '#ffa6b4', fog: 0.0050, haze: 1.6 },
     { name: 'last light', skyTop: '#182f72', skyHor: '#eeb0b4', valley: '#243474', lit: '#fbe3e4', shade: '#8497dc', glow: '#ffb4a0', fog: 0.0048, haze: 1.3 },
+    { name: 'moonlight', skyTop: '#0a1330', skyHor: '#2c3d72', valley: '#08112c', lit: '#c3d1f2', shade: '#41568f', glow: '#d6e2ff', fog: 0.0060, haze: 0.9 },
   ].map((m) => {
     const lit = hex(m.lit), shade = hex(m.shade);
     return {
@@ -49,7 +52,7 @@
     rock: hex('#59667c'), rockDark: hex('#39445a'),
     fence: hex('#ff5630'), post: hex('#e9eef5'),
     ice: hex('#23bfe8'), iceDeep: hex('#0f86c8'),
-    jacket: hex('#e62a6f'), pants: hex('#1b2a4b'), helmet: hex('#f4f6fa'), goggles: hex('#ff9d2e'), skis: hex('#ffcc33'), glove: hex('#141b2b'),
+    jacket: hex('#e62a6f'), bib: hex('#f6f8fb'), pants: hex('#1b2a4b'), helmet: hex('#f4f6fa'), goggles: hex('#ff9d2e'), skis: hex('#ffcc33'), glove: hex('#141b2b'),
     gateRed: hex('#f0353b'), gateBlue: hex('#1f6fe0'),
   };
 

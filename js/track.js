@@ -20,6 +20,7 @@
      along an open ridge: [left, right]. Leaving a forested edge ends the run in the trees
      instead of in a fall; it is exactly as final, just a different view. */
   const NOWALL = [0, 0];
+  const ENVS = ['forest', 'glacier', 'rocky'];
   const WALLS = { open: [1, 1], slalom: [1, 1], gates: [1, 1], field: [1, 1], sweep: [1, 1], tilt: [1, 1] };
   // Sections that always keep their boost strips; elsewhere a share of sections go without.
   const KEEP_PADS = { start: 1, rest: 1, drop: 1, jump: 1, bridge: 1, split: 1 };
@@ -27,8 +28,8 @@
   // Which wave each section type first appears in, and how often it is picked.
   const TYPES = {
     open: { w: 0, wt: 0.6 }, slalom: { w: 0, wt: 1 }, sweep: { w: 0, wt: 0.9 }, field: { w: 0, wt: 1 },
-    gates: { w: 0, wt: 1 }, bridge: { w: 1, wt: 0.9 }, jump: { w: 1, wt: 1 }, tilt: { w: 1, wt: 0.8 },
-    split: { w: 2, wt: 0.85 }, islands: { w: 2, wt: 0.9 },
+    gates: { w: 0, wt: 1 }, bridge: { w: 0, wt: 0.9 }, jump: { w: 0, wt: 1.5 }, tilt: { w: 0, wt: 0.8 },
+    split: { w: 1, wt: 0.9 }, islands: { w: 1, wt: 1 },
   };
 
   class Track {
@@ -53,7 +54,7 @@
       this.x = 0; this.y = 0; this.z = 0; this.yaw = 0;
       this.sl = 0.22; this.cv = 0; this.bkF = 0.65;
       this.hw = 7.6; this.pal = 0; this.inten = 0;
-      this.wave = 0; this.queue = []; this.recent = [];
+      this.wave = 0; this.queue = []; this.recent = []; this.env = 'forest'; this.lastEnv = '';
       this.ribId = 0;
       this._obs = []; this._pads = [];
       this._push(0);
@@ -247,7 +248,9 @@
       const rb = this._rib(k0, k1, {
         hw: (i) => lerp(from, W, smooth(i / ease)), e: o.e, capA: o.capA, capB: o.capB,
       });
-      const walls = o.walls || this.cw;
+      let walls = o.walls || this.cw;
+      if (this.env === 'glacier') walls = NOWALL;                       // no trees up here: every edge is a drop
+      else if (this.env === 'rocky' && walls !== NOWALL) walls = (k0 >> 4) & 1 ? [walls[0], 0] : [0, walls[1]];   // rocky: the trees thin to one side
       const fill = (w) => {
         if (!w) return null;
         const a = new Float32Array(rb.n);
@@ -346,6 +349,8 @@
       if (this.surfaceAt(s, o, 1e9, SF) !== 1) return null;
       const fr = this.frameAt(s, FR);
       kind = kind || (hx <= 1.25 ? 'pine' : 'rock');
+      // above the tree line there is only rock; on rocky ground about half the trees are boulders
+      if ((kind === 'pine' || kind === 'pines') && (this.env === 'glacier' || (this.env === 'rocky' && hash01(o, s) < 0.5))) kind = 'rock';
       const seed = hash01(s, o);
       let h, hz;
       if (kind === 'pine') { h = 5.4 + 2.4 * seed; hz = Math.min(0.95, hx * 0.85); }
@@ -386,7 +391,7 @@
       for (const p of this._pads) this.pads.push(p);
       this._obs.length = 0; this._pads.length = 0;
       this.obsV++;
-      this.chunks.push({ type, s0: k0 * SEG, s1: this.k * SEG, I, wave: this.wave, walls: this.cw });
+      this.chunks.push({ type, s0: k0 * SEG, s1: this.k * SEG, I, wave: this.wave, walls: this.cw, env: this.env });
       this._scenery(k0);
     }
 
@@ -427,6 +432,7 @@
       if (!this.queue.length) this._planWave();
       const job = this.queue.shift();
       const k0 = this.k;
+      this.env = job.env || this.env;
       this.cw = WALLS[job.type] || NOWALL;
       this.noPads = !KEEP_PADS[job.type] && !this.rng.chance(0.72);
       this['_c_' + job.type](job.I, job);
@@ -438,15 +444,14 @@
        run-out. Each wave starts a little above where the last one started. */
     _planWave() {
       const w = this.wave, r = this.rng, q = this.queue;
-      if (w === 0) {
-        q.push({ type: 'start', I: 0.05 }, { type: 'slalom', I: 0.5 }, { type: 'field', I: 0.6 },
-          { type: 'sweep', I: 0.66 }, { type: 'gates', I: 0.72 }, { type: 'rest', I: 0 });
-        this.recent = ['field', 'gates'];
-        return;
-      }
+      /* Each wave is its own stretch of mountain: forest lined with pines, an open glacier with
+         boulders and sheer drops on both sides, or rocky ground where the trees thin out. */
+      const env = w === 0 ? 'forest' : r.pick(ENVS.filter((e) => e !== this.lastEnv));
+      this.lastEnv = env;
+      if (w === 0) q.push({ type: 'start', I: 0.05, env });
       const I0 = Math.min(0.5 + 0.12 * w, 0.85), I1 = Math.min(0.75 + 0.12 * w, 1);
-      const n = (w === 1 ? 4 : 3 + Math.min(w, 2)) + (r.chance(0.4) ? 1 : 0);
-      const fresh = Object.keys(TYPES).filter((t) => TYPES[t].w === w);
+      const n = (w <= 1 ? 4 : 3 + Math.min(w, 2)) + (r.chance(0.4) ? 1 : 0);
+      const fresh = w === 0 ? [] : Object.keys(TYPES).filter((t) => TYPES[t].w === w);
       const picks = [];
       for (let i = 0; i < n; i++) {
         let type;
@@ -463,16 +468,17 @@
         this.recent.push(type);
         if (this.recent.length > 3) this.recent.shift();
       }
-      picks.forEach((type, i) => q.push({ type, I: lerp(I0, I1, Math.pow(i / (n - 1), 1.15)) }));
+      if (!picks.includes('jump')) picks[1 + ((r() * (n - 1)) | 0)] = 'jump';       // every wave has air in it
+      picks.forEach((type, i) => q.push({ type, I: lerp(I0, I1, Math.pow(i / (n - 1), 1.15)), env }));
       const peak = Math.min(1, I1 + 0.12);
-      q.push({ type: 'drop', I: I1 });
-      const hard = ['gates', 'field', 'slalom'].filter((t) => t !== this.recent[this.recent.length - 1]);
-      if (w >= 2) hard.push('islands');
+      q.push({ type: 'drop', I: I1, env });
+      const hard = ['gates', 'field', 'slalom', 'jump'].filter((t) => t !== this.recent[this.recent.length - 1]);
+      if (w >= 1) hard.push('islands');
       const climax = r.pick(hard);
-      q.push({ type: climax, I: peak, climax: true });
+      q.push({ type: climax, I: peak, climax: true, env });
       this.recent.push(climax);
       if (this.recent.length > 3) this.recent.shift();
-      q.push({ type: 'rest', I: 0 });
+      q.push({ type: 'rest', I: 0, env });
     }
 
     // ------------------------------------------------------------------ sections
@@ -694,12 +700,13 @@
     _c_jump(I) {
       const r = this.rng, W = lerp(7.2, 6.1, I), sl = 0.24 + 0.1 * I;
       this._begin(sl);
-      const jumps = I > 0.6 && r.chance(0.45) ? 2 : 1;
+      // one to three kickers, each its own size: some pop you up, some send you long
+      const jumps = 1 + (r.chance(lerp(0.35, 0.7, I)) ? 1 : 0) + (I > 0.7 && r.chance(0.35) ? 1 : 0);
       let kA = this.k, lead = this.uNom * 0.9;
       for (let j = 0; j < jumps; j++) {
         // The kicker is sized in time, so a jump feels the same at any pace.
         const nKick = Math.max(3, Math.round((this.uNom * 0.3) / SEG)), Lk = nKick * SEG;
-        const vK = lerp(8, 12, I) * r.range(0.9, 1.1);          // lift off the lip at cruising speed
+        const vK = lerp(8, 12, I) * r.range(0.8, 1.3);          // lift off the lip at cruising speed
         const ke = vK / this.uNom, eK = (ke * Lk) / 2;
         const nGap = Math.max(3, Math.round((this.uMin * lerp(0.36, 0.5, I)) / SEG)), Lg = nGap * SEG;
         // Drop the far side far enough that even the slowest possible ball clears the gap.
