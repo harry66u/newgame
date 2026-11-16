@@ -166,7 +166,7 @@ void main(){
 
   // =================================================================== crystals in the air
   const CRYSTALS = 448;
-  const SHUTTER = 0.015;        // seconds of travel a streak covers
+  const SHUTTER = 0.008;        // seconds of travel a streak covers
 
   /* The box is 64 x 16 x 64 m (512 m, the wrap of uCamW, is a whole number of each) and rides
      ahead of the camera. Crystals fade toward its faces, so wrapping is never seen. */

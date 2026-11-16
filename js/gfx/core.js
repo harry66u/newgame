@@ -537,7 +537,7 @@ void main(){
 
       // composite to the screen
       const run = v.mode === 'run' ? 1 : 0, calm = v.calm ? 0 : 1;
-      const want = run * calm * (clamp((v.u - 34) / 60, 0, 1) * 0.35 + (v.boost > 0 ? 0.7 : 0));
+      const want = run * calm * (clamp((v.u - 50) / 60, 0, 1) * 0.18 + (v.boost > 0 ? 0.4 : 0));   // a hint of smear: at today's speeds more hides the piste
       this.blur += (want - this.blur) * (1 - Math.exp(-5 * dt));
       gl.bindFramebuffer(gl.FRAMEBUFFER, null);
       gl.viewport(0, 0, T.w, T.h);

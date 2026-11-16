@@ -212,7 +212,7 @@
       cam.roll = damp(cam.roll, 0, 2, DT);
     }
     cam.kick = damp(cam.kick, boostF, st.boost > 0 ? 9 : 2.2, DT);
-    cam.fov = damp(cam.fov, 64 + sp * 20, 3, DT);
+    cam.fov = damp(cam.fov, 64 + sp * 12, 3, DT);
     cam.trauma = Math.max(0, cam.trauma - DT * 1.9);
   }
 
