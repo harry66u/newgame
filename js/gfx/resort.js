@@ -140,11 +140,24 @@ void main(){
     D[j + 10] = col[0]; D[j + 11] = col[1]; D[j + 12] = col[2]; D[j + 13] = side;
   }
 
+  /* Which way the lift line runs at this tower: from its neighbours on the same lift (the line
+     wanders across the piste, so it is not the track's heading). Worked out once, cached as ob.ly. */
+  function lineYaw(R, tr, ob) {
+    let a = null, b = null;
+    for (const o of tr.obstacles) {
+      if (o.kind !== 'tower' || o.lift !== ob.lift || o === ob) continue;
+      if (o.s < ob.s) { if (!a || o.s > a.s) a = o; } else if (!b || o.s < b.s) b = o;
+    }
+    const wa = R.place(tr, a || ob), wb = R.place(tr, b || ob);
+    const dx = wb[0] - wa[0], dz = wb[2] - wa[2];
+    return (ob.ly = dx * dx + dz * dz > 1 ? Math.atan2(dx, -dz) : ob.w[3]);
+  }
+
   function tower(ob, w, cam) {
-    const x = w[0] - cam.x, y = w[1] - cam.y, z = w[2] - cam.z, yaw = w[3], h = ob.h;
+    const x = w[0] - cam.x, y = w[1] - cam.y, z = w[2] - cam.z, yaw = ob.ly, h = ob.h;
     // the footing is exactly the hit box, from below the snow to head height
-    part(0, x, y, z, 0, -0.5, 0, ob.hx, 0.875, ob.hz, yaw, w[4], ob.b || 0, 1, CONCRETE, 0);
-    part(0, x, y, z, 0, 1.0, 0, ob.hx * 0.96, 0.55, ob.hz * 0.96, yaw, 0, 0, 1, STEEL, 0);
+    part(0, x, y, z, 0, -0.5, 0, ob.hx, 0.875, ob.hz, w[3], w[4], ob.b || 0, 1, CONCRETE, 0);
+    part(0, x, y, z, 0, 1.0, 0, ob.hx * 0.96, 0.55, ob.hz * 0.96, w[3], 0, 0, 1, STEEL, 0);
     part(1, x, y, z, 0, 2.05, 0, 0.42, (h + 0.25 - 2.05) / 2, 0.42, yaw, 0, 0, 0.6, STEEL, 0);
     part(0, x, y, z, 0, h - 0.17, 0, ARM + 0.28, 0.17, 0.17, yaw, 0, 0, 1, STEEL, 0);
     for (let side = -1; side <= 1; side += 2) {
@@ -164,8 +177,8 @@ void main(){
   function span(A, B, cam, gap) {
     const wa = A.w, wb = B.w, L = Math.max(1, B.s - A.s), sag = Math.min(SAG_MAX, L * SAG);
     for (let side = -1; side <= 1; side += 2) {
-      const ax = wa[0] + Math.cos(wa[3]) * side * ARM - cam.x, ay = wa[1] + A.h - 0.3 - cam.y, az = wa[2] + Math.sin(wa[3]) * side * ARM - cam.z;
-      const bx = wb[0] + Math.cos(wb[3]) * side * ARM - cam.x, by = wb[1] + B.h - 0.3 - cam.y, bz = wb[2] + Math.sin(wb[3]) * side * ARM - cam.z;
+      const ax = wa[0] + Math.cos(A.ly) * side * ARM - cam.x, ay = wa[1] + A.h - 0.3 - cam.y, az = wa[2] + Math.sin(A.ly) * side * ARM - cam.z;
+      const bx = wb[0] + Math.cos(B.ly) * side * ARM - cam.x, by = wb[1] + B.h - 0.3 - cam.y, bz = wb[2] + Math.sin(B.ly) * side * ARM - cam.z;
       if (nk < MAXK) {
         const j = nk++ * 7;
         KD[j] = ax; KD[j + 1] = ay; KD[j + 2] = az; KD[j + 3] = sag; KD[j + 4] = bx; KD[j + 5] = by; KD[j + 6] = bz;
@@ -177,25 +190,30 @@ void main(){
       for (; u < B.s; u += gap) {
         const f = (u - A.s) / L;
         if (f < 0.03 || f > 0.97) continue;                     // not through the sheaves
-        chair(ax + (bx - ax) * f, ay + (by - ay) * f - 4 * sag * f * (1 - f) - 0.05, az + (bz - az) * f, yaw);
+        const cx = ax + (bx - ax) * f, cy = ay + (by - ay) * f - 4 * sag * f * (1 - f) - 0.05, cz = az + (bz - az) * f;
+        if (cx * cx + (cy - 1.8) * (cy - 1.8) + cz * cz < 6) continue;   // a tall phone camera can fly through a chair: drop it instead
+        chair(cx, cy, cz, yaw);
       }
     }
   }
 
   function funBox(ob, w, cam) {
     const x = w[0] - cam.x, y = w[1] - cam.y, z = w[2] - cam.z, yaw = w[3], dy = w[4], b = ob.b || 0, h = ob.h;
-    const t = Math.min(0.14, ob.hx * 0.15);
+    // the stripes sit in from the edge with orange outside them: white on the very edge vanishes against the snow
+    const t = Math.min(0.12, ob.hx * 0.12), rim = Math.min(0.1, ob.hx * 0.08);
     part(0, x, y, z, 0, -0.1, 0, ob.hx, (h - 0.06 + 0.1) / 2, ob.hz, yaw, dy, b, 1, CHARCOAL, 0);
-    part(0, x, y, z, 0, h - 0.06, 0, ob.hx - t, 0.03, ob.hz, yaw, dy, b, 1, ORANGE, 0);
-    for (let side = -1; side <= 1; side += 2) part(0, x, y, z, side * (ob.hx - t / 2), h - 0.06, 0, t / 2, 0.03, ob.hz, yaw, dy, b, 1, STRIPE, 0);
+    part(0, x, y, z, 0, h - 0.06, 0, ob.hx, 0.03, ob.hz, yaw, dy, b, 1, ORANGE, 0);
+    for (let side = -1; side <= 1; side += 2) part(0, x, y, z, side * (ob.hx - rim - t / 2), h - 0.05, 0, t / 2, 0.029, ob.hz - rim, yaw, dy, b, 1, STRIPE, 0);
   }
 
   // Where a flag stands: cached on it, [x, y, z, yaw streaming outward].
   function plantFlag(tr, f) {
     const fr = tr.frameAt(f.s, FR);
     const x = fr.x + Math.cos(fr.yaw) * f.o, z = fr.z + Math.sin(fr.yaw) * f.o;
+    // flags stand on the lip, just past the edge: if there is no snow right there, step inward to find it
+    const inward = f.o < 0 ? 1 : -1;
     let y = fr.y;
-    if (tr.surfaceAt(f.s, f.o, 1e9, SF) !== 0) y = SF.h;
+    for (let k = 0; k < 4; k++) if (tr.surfaceAt(f.s, f.o + inward * k * 0.5, 1e9, SF) !== 0) { y = SF.h; break; }
     return (f.fw = [x, y, z, fr.yaw + (f.o < 0 ? Math.PI : 0)]);
   }
 
@@ -260,6 +278,7 @@ void main(){
           if (ob.s >= behind && ob.s <= ahead) funBox(ob, R.place(tr, ob), cam);
         } else if (ob.kind === 'tower') {
           R.place(tr, ob);
+          if (ob.ly === undefined) lineYaw(R, tr, ob);
           const li = liftSlot(ob.lift), prev = li >= 0 ? lastOb[li] : null;
           const linked = prev && prev !== ob && prev.s < ob.s && ob.s - prev.s < 160 && prev.s <= ahead && prev.w;
           if (linked && ob.s >= behind) span(prev, ob, cam, gap);
