@@ -160,12 +160,12 @@
     K_REL: 2.2,
     COUNTER: 1.35,         // extra bite when steering against current motion
     AIR_A: 0.4,
-    JUMP_V: 10.5,         // pop off the snow when you jump: about a metre of height, 0.4 s of air
+    JUMP_V: 15,           // pop off the snow when you jump: over two metres of height, 0.6 s of air
     JUMP_BUF: 0.14,       // a jump pressed this long before touching down still happens on landing
     HURDLE_H: 0.8,        // height of the low fences across the piste that you have to jump
     AIR_K: 2.2,
     GB: 60,               // sideways pull of a tilted surface, per unit of bank
-    AC_MAX: 24,           // strongest cornering push the generator will ask the player to hold
+    AC_MAX: 34,           // strongest cornering push the generator will ask the player to hold
 
     EDGE: 0.2,            // how far the ball's centre may hang over an edge
     SNAP: 0.6,            // a ball this far below a lip still makes the landing

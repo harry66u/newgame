@@ -538,7 +538,7 @@
       const gap = this.uMax * lerp(1.3, 0.95, I) * r.range(1, 1.25);
       const lead = this.uNom * 1.4, L = lead + gap * (n - 1) + this.uNom * 1.2;
       const k0 = this.k, s0 = k0 * SEG;
-      this._walk(this._segs(L), { cv: 0, sl, int: I });          // straight and level across: a fence is the same height edge to edge
+      this._walk(this._segs(L), { cv: this._curve(L, lerp(0.4, 0.9, I), r.chance(0.5) ? 'S' : 'C'), sl, int: I });
       this._main(k0, this.k, W);
       for (let i = 0; i < n; i++) this._hurdle(s0 + lead + gap * i);
       // at the top end, something to steer round between the fences as well
@@ -566,7 +566,7 @@
       }
       const L = Math.max(lam * r.range(4, 6.5), this._layout(rows, W, I) + this.uNom * 0.6);
       const k0 = this.k, s0 = k0 * SEG;
-      this._walk(this._segs(L), { cv: this._curve(L, lerp(0.2, 0.6, I), 'S'), sl, int: I });
+      this._walk(this._segs(L), { cv: this._curve(L, lerp(0.5, 0.95, I), 'S'), sl, int: I });
       const nL = lam / SEG, nE = Math.min(6, (this.k - k0) / 4);
       this._main(k0, this.k, W, {
         e: (i, n) => amp * 0.5 * (1 - Math.cos((TAU * i) / nL)) * smooth(i / nE) * smooth((n - 1 - i) / nE),
@@ -587,7 +587,7 @@
       }
       const L = Math.max(this.uNom * 3, this._layout(rows, W, I) + this.uNom * 0.6);
       const k0 = this.k, s0 = k0 * SEG;
-      this._walk(this._segs(L), { cv: this._curve(L, lerp(0.2, 0.5, I), 'S'), sl, int: I });
+      this._walk(this._segs(L), { cv: this._curve(L, lerp(0.5, 0.9, I), r.chance(0.5) ? 'S' : 'C'), sl, int: I });
       this._main(k0, this.k, W);
       this._rows(s0, rows);
       this._padLine(s0 + L * 0.15, 0, 2, 9);
@@ -611,7 +611,7 @@
       }
       const L = Math.max(this.uNom * 3, this._layout(rows, W, I) + this.uNom * 0.6);
       const k0 = this.k, s0 = k0 * SEG;
-      this._walk(this._segs(L), { cv: this._curve(L, lerp(0.15, 0.4, I), 'C'), sl, int: I });
+      this._walk(this._segs(L), { cv: this._curve(L, lerp(0.45, 0.85, I), 'C'), sl, int: I });
       this._main(k0, this.k, W);
       this._rows(s0, rows);
       const id = ++this.liftId;
@@ -665,7 +665,7 @@
       }
       const L = this._layout(rows, W, I) + this.uMax * 0.4;
       const k0 = this.k, s0 = k0 * SEG;
-      this._walk(this._segs(L), { cv: this._curve(L, I * 0.5, 'S'), sl, int: I });
+      this._walk(this._segs(L), { cv: this._curve(L, 0.4 + I * 0.5, 'S'), sl, int: I });
       this._main(k0, this.k, W);
       this._rows(s0, rows);
       // boosts on the tight line, skimming the wall tips
@@ -692,7 +692,7 @@
       }
       const L = this._layout(rows, W, I) + this.uMax * 0.4;
       const k0 = this.k, s0 = k0 * SEG;
-      this._walk(this._segs(L), { cv: this._curve(L, I * 0.6, r.chance(0.5) ? 'S' : 'C'), sl, int: I });
+      this._walk(this._segs(L), { cv: this._curve(L, 0.4 + I * 0.5, r.chance(0.5) ? 'S' : 'C'), sl, int: I });
       this._main(k0, this.k, W);
       this._rows(s0, rows);
       // a boost through the gap, hard against one post
@@ -853,7 +853,8 @@
         const vy = ke * this.uMax, tAir = (vy + Math.sqrt(vy * vy + 2 * C.G * (eK + D))) / C.G;
         lead = Math.max(this.uNom * 0.8, this.uMax * tAir - Lg + this.uMax * 0.4);
       }
-      this._walk(this._segs(lead), { cv: 0, sl, int: I });
+      const Lo = Math.max(lead, this.uNom * 1.2);                // land, then carve away: the run-out bends
+      this._walk(this._segs(Lo), { cv: (() => { const c = this._curve(Lo, 0.7, 'C'); const f = (t) => (t < 0.35 ? 0 : c((t - 0.35) / 0.65)); f.dir = c.dir; f.k = c.k; return f; })(), sl, int: I });
       this._main(kA, this.k, W + 0.4, { capA: true });
     }
 

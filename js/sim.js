@@ -158,7 +158,8 @@
       const ob = obs[i];
       if (ob.s - 3 > st.s) break;
       if (ob.s + ob.hz + 1.5 < sPrev) continue;
-      if (st.y >= ob.yTop - 0.15) continue;
+      const top = ob.yTop + (st.o - ob.o) * ob.b;             // the top follows the bank, so a fence on a curve is level with the snow
+      if (st.y >= top - 0.15) continue;
       let ds = Math.abs(st.s - ob.s) - ob.hz, dOff = Math.abs(st.o - ob.o) - ob.hx;
       if (ds < 0) ds = 0;
       if (dOff < 0) dOff = 0;
@@ -167,7 +168,7 @@
         const cl = Math.abs(st.o - ob.o) - ob.hx - C.R;
         if (cl < st.minCl) st.minCl = cl;
         if (ev) ev.push({ type: 'pass', side: ob.o > st.o ? 1 : -1, cl, ob });
-        const hop = ob.hurdle || (ob.kind === 'box' && st.y >= ob.yTop - 0.15);
+        const hop = ob.hurdle || (ob.kind === 'box' && st.y >= ob.yTop + (st.o - ob.o) * ob.b - 0.15);
         if ((hop || cl < C.NEAR) && !ob.row.near && ob.row.id !== st.lastRow) {
           st.lastRow = ob.row.id;
           if (!ghost) ob.row.near = true;
